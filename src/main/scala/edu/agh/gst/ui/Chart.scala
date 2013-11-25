@@ -3,20 +3,24 @@ package edu.agh.gst.ui
 import javax.swing.JPanel
 import org.jfree.chart.{ChartPanel, ChartFactory, JFreeChart}
 import org.jfree.data.xy.{XYSeriesCollection, XYSeries}
-import org.jfree.chart.plot.PlotOrientation
+import org.jfree.chart.plot.{XYPlot, PlotOrientation}
 import java.awt.BorderLayout
+import org.jfree.chart.axis.{NumberTickUnit, NumberAxis}
 
 class Chart extends JPanel {
 
-  val series = new XYSeries("Google Scholar")
-  val dataset = new XYSeriesCollection
+  private val series = new XYSeries("Google Scholar")
+  private val dataset = new XYSeriesCollection
   dataset addSeries series
-  val jfc = ChartFactory createXYLineChart ("Accumulated article counts", "Year",
+  private val jfc = ChartFactory createXYLineChart ("Accumulated article counts", "Year",
     "Number so far", dataset, PlotOrientation.VERTICAL, true, true, false)
+  private val plot = jfc.getPlot.asInstanceOf[XYPlot]
+  plot.getDomainAxis.asInstanceOf[NumberAxis].setTickUnit(new NumberTickUnit(1))
+  plot.getRangeAxis.asInstanceOf[NumberAxis].setTickUnit(new NumberTickUnit(1))
   add(new ChartPanel(jfc), BorderLayout.CENTER)
 
   import collection.mutable
-  val data = new mutable.HashMap[Int, Int]
+  private val data = new mutable.HashMap[Int, Int]
 
   def addYears (years: List[Int]) {
     years foreach { y =>
