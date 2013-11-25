@@ -49,9 +49,11 @@ class MainFrame extends JFrame with SwingHelper {
     val go = new JButton("Go!")
     go addActionListener new ActionListener {
       def actionPerformed(e: ActionEvent) = {
-        go setEnabled false
+        (go :: query :: Nil) foreach (_ setEnabled false)
         numProcessed = 0
-        (crawler crawl query.getText)(onCrawled)
+        val q = query.getText
+        chart setTitle q
+        (crawler crawl q)(onCrawled)
       }
     }
     tb add go

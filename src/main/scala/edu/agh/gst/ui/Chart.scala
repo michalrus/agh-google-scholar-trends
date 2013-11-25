@@ -22,6 +22,8 @@ class Chart extends JPanel {
   import collection.mutable
   private val data = new mutable.HashMap[Int, Int]
 
+  def setTitle(s: String) = jfc setTitle s
+
   def addYears (years: List[Int]) {
     years foreach { y =>
       val old = data getOrElse (y, 0)
