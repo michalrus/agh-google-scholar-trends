@@ -49,6 +49,7 @@ class MainFrame extends JFrame with SwingHelper {
     val go = new JButton("Go!")
     go addActionListener new ActionListener {
       def actionPerformed(e: ActionEvent) = {
+        go setEnabled false
         numProcessed = 0
         (crawler crawl query.getText)(onCrawled)
       }
