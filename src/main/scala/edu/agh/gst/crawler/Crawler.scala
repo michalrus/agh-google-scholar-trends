@@ -1,8 +1,15 @@
 package edu.agh.gst.crawler
 
+import scala.util.Try
+
 object Crawler {
   val GoogleStep = 10
   val SleepMs = 1000
+
+  //val YearRegex = """<div class="gs_a">[^<]*?(\d\d\d\d)""".r
+  val YearRegex = """<div class="gs_a">.*?(\d\d\d\d)""".r
+  val YearRegexGroup = 1
+  def isYear(i: Int) = i >= 1950 && i <= 2050
 }
 
 class Crawler {
@@ -14,19 +21,21 @@ class Crawler {
       request(query, start) onSuccess {
         case r =>
           val (years, more_?) = parse(r)
-          f(years)
           if (more_?) {
             Thread sleep SleepMs
             loop(start + GoogleStep)
           }
+          f(years)
       }
 
     loop(0)
   }
 
   private def parse(r: String): (List[Int], Boolean) = {
-    // FIXME
-    (1 :: 2 :: 3 :: 4 :: Nil, false)
+    val years = ((YearRegex findAllIn r).matchData map (_ group YearRegexGroup) map
+      (s => Try(s.toInt).toOption)).flatten.toList filter isYear
+
+    (years, years.nonEmpty)
   }
 
   private def request(q: String, start: Int) = {

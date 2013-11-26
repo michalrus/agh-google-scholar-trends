@@ -14,9 +14,9 @@ class Chart extends JPanel {
   dataset addSeries series
   private val jfc = ChartFactory createXYLineChart ("Accumulated article counts", "Year",
     "Number so far", dataset, PlotOrientation.VERTICAL, true, true, false)
-  private val plot = jfc.getPlot.asInstanceOf[XYPlot]
-  plot.getDomainAxis.asInstanceOf[NumberAxis].setTickUnit(new NumberTickUnit(1))
-  plot.getRangeAxis.asInstanceOf[NumberAxis].setTickUnit(new NumberTickUnit(1))
+//  private val plot = jfc.getPlot.asInstanceOf[XYPlot]
+//  plot.getDomainAxis.asInstanceOf[NumberAxis].setTickUnit(new NumberTickUnit(1))
+//  plot.getRangeAxis.asInstanceOf[NumberAxis].setTickUnit(new NumberTickUnit(1))
   add(new ChartPanel(jfc), BorderLayout.CENTER)
 
   import collection.mutable
