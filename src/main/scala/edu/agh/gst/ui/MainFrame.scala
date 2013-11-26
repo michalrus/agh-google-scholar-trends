@@ -2,7 +2,7 @@ package edu.agh.gst.ui
 
 import javax.swing._
 import edu.agh.gst.SwingHelper
-import scala.util.{Failure, Try, Success}
+import scala.util.Try
 import java.awt.{BorderLayout, Dimension}
 import java.awt.event.{ActionEvent, ActionListener}
 import edu.agh.gst.crawler._
