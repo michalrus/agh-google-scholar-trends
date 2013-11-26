@@ -56,7 +56,7 @@ class MainFrame extends JFrame with SwingHelper {
   private def showError(s: String) =
     JOptionPane showMessageDialog(this, s, "Error", JOptionPane.WARNING_MESSAGE)
 
-  private def onCrawled(years: Try[List[CrawlerEntry]], crawler: Tab) {
+  private def onCrawled(years: Try[List[CrawlerEntry]], crawler: Tab) = laterOnUiThread {
     years match {
       case Success(es) =>
         numProcessed += es.length
