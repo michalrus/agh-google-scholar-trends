@@ -6,28 +6,32 @@ import org.jfree.data.xy.{XYSeriesCollection, XYSeries}
 import org.jfree.chart.plot.{XYPlot, PlotOrientation}
 import java.awt.BorderLayout
 import org.jfree.chart.axis.{NumberTickUnit, NumberAxis}
+import edu.agh.gst.crawler.CrawlerEntry
 
 class Chart extends JPanel {
 
-  private val series = new XYSeries("Google Scholar")
+  private val articlesSeries = new XYSeries("Number of articles")
+  private val citationsSeries = new XYSeries("Number of citations")
   private val dataset = new XYSeriesCollection
-  dataset addSeries series
+  dataset addSeries articlesSeries
+  dataset addSeries citationsSeries
   private val jfc = ChartFactory createXYLineChart ("Accumulated article counts", "Year",
     "Number so far", dataset, PlotOrientation.VERTICAL, true, true, false)
-//  private val plot = jfc.getPlot.asInstanceOf[XYPlot]
-//  plot.getDomainAxis.asInstanceOf[NumberAxis].setTickUnit(new NumberTickUnit(1))
-//  plot.getRangeAxis.asInstanceOf[NumberAxis].setTickUnit(new NumberTickUnit(1))
   add(new ChartPanel(jfc), BorderLayout.CENTER)
 
+  case class YearData(articles: Int, citations: Int) {
+    def +(that: YearData) = YearData(this.articles + that.articles, this.citations + that.citations)
+  }
+
   import collection.mutable
-  private val data = new mutable.HashMap[Int, Int]
+  private val data = new mutable.HashMap[Int, YearData]
 
   def setTitle(s: String) = jfc setTitle s
 
-  def addYears (years: List[Int]) {
-    years foreach { y =>
-      val old = data getOrElse (y, 0)
-      data += y -> (old + 1)
+  def addEntries (entries: List[CrawlerEntry]) {
+    entries foreach { e =>
+      val old = data getOrElse (e.year, YearData(0, 0))
+      data += e.year -> (old + YearData(1, e.citations))
     }
     refresh()
   }
@@ -42,8 +46,12 @@ class Chart extends JPanel {
       case ((_, acc), (y, num)) => (y, acc + num)
     }
 
-    series clear()
-    accd foreach { case (y, num) => series add(y, num) }
+    articlesSeries clear()
+    citationsSeries clear()
+    accd foreach { case (y, d) =>
+      articlesSeries add(y, d.articles)
+      citationsSeries add(y, d.citations)
+    }
   }
 
 }

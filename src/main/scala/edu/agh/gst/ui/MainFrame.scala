@@ -5,13 +5,13 @@ import edu.agh.gst.SwingHelper
 import scala.util.{Failure, Try, Success}
 import java.awt.{BorderLayout, Dimension}
 import java.awt.event.{ActionEvent, ActionListener}
-import edu.agh.gst.crawler.Crawler
+import edu.agh.gst.crawler.{CrawlerEntry, HttpError, GoogleScholarCrawler}
 
 class MainFrame extends JFrame with SwingHelper {
 
   private val query = new JTextField
   private val results = new JLabel("0")
-  private val crawler = new Crawler
+  private val gsCrawler = new GoogleScholarCrawler
   private val chart = new Chart
 
   laterOnUiThread {
@@ -32,12 +32,18 @@ class MainFrame extends JFrame with SwingHelper {
     add(chart, BorderLayout.CENTER)
   }
 
-  private def onCrawled(years: Try[List[Int]]) {
+  private def showError(s: String) =
+    JOptionPane showMessageDialog(this, s, "Error", JOptionPane.WARNING_MESSAGE)
+
+  private def onCrawled(years: Try[List[CrawlerEntry]]) {
     years match {
-      case Success(ys) =>
-        numProcessed += ys.length
-        chart addYears ys
-      case Failure(e) => JOptionPane showMessageDialog(this, e.getMessage, "Error", JOptionPane.WARNING_MESSAGE)
+      case Success(es) =>
+        numProcessed += es.length
+        chart addEntries es
+      case Failure(e: HttpError) =>
+        showError(e.getMessage + "\n\n" + e.response.getResponseBody)
+      case Failure(e) =>
+        showError(e.toString)
     }
   }
 
@@ -57,7 +63,7 @@ class MainFrame extends JFrame with SwingHelper {
         numProcessed = 0
         val q = query.getText
         chart setTitle q
-        (crawler crawl q)(onCrawled)
+        (gsCrawler crawl q)(onCrawled)
       }
     }
     tb add go
