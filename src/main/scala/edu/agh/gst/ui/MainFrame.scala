@@ -37,7 +37,7 @@ class MainFrame extends JFrame with SwingHelper {
       case Success(ys) =>
         numProcessed += ys.length
         chart addYears ys
-      case Failure(e) => JOptionPane showConfirmDialog(this, e.getMessage, "Error", JOptionPane.OK_OPTION)
+      case Failure(e) => JOptionPane showMessageDialog(this, e.getMessage, "Error", JOptionPane.WARNING_MESSAGE)
     }
   }
 
