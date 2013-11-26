@@ -2,7 +2,7 @@ package edu.agh.gst.ui
 
 import javax.swing._
 import edu.agh.gst.SwingHelper
-import scala.util.Try
+import scala.util.{Failure, Try, Success}
 import java.awt.{BorderLayout, Dimension}
 import java.awt.event.{ActionEvent, ActionListener}
 import edu.agh.gst.crawler.Crawler
@@ -32,9 +32,13 @@ class MainFrame extends JFrame with SwingHelper {
     add(chart, BorderLayout.CENTER)
   }
 
-  private def onCrawled(years: List[Int]) {
-    numProcessed += years.length
-    chart addYears years
+  private def onCrawled(years: Try[List[Int]]) {
+    years match {
+      case Success(ys) =>
+        numProcessed += ys.length
+        chart addYears ys
+      case Failure(e) => JOptionPane showConfirmDialog(this, e.getMessage, "Error", JOptionPane.OK_OPTION)
+    }
   }
 
   private def buildToolbar() {
