@@ -62,11 +62,7 @@ class GoogleScholarCrawler(captcha: String => Future[String]) extends Crawler {
     def submit(answer: String): Future[Boolean] = ???
 
     image match {
-      case Some(img) =>
-        for {
-          answer <- captcha(img)
-          ok <- submit(answer)
-        } yield ok
+      case Some(img) => captcha(img) flatMap submit
       case _ => Future failed new Exception("not a captcha request")
     }
   }
