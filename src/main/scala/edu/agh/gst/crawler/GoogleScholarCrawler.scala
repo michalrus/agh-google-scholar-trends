@@ -6,16 +6,15 @@ import javax.imageio.ImageIO
 import java.awt.Image
 
 object GoogleScholarCrawler {
-  private val rng = new java.util.Random
-
   val GoogleStep = 10
-  private val SleepMin = 3
-  private val SleepMax = 7
-  def randomSleepDuration = 1000L * (SleepMin + rng.nextInt % (SleepMax - SleepMin))
+  def sleepDuration = 1000L
 
   val YearRegex = """<div class="gs_a">.*?(\d\d\d\d)""".r
   val YearRegexGroup = 1
   def isYear(i: Int) = i >= 1950 && i <= 2050
+
+  val CaptchaRegex = """src="(/sorry/image[^"]+)""".r
+  val CaptchaRegexGroup = 1
 }
 
 import com.ning.http.client.Response
@@ -32,7 +31,7 @@ class GoogleScholarCrawler(captcha: Image => Future[String]) extends Crawler {
   override def crawl[F](query: String)(f: Try[List[CrawlerEntry]] => F) {
     def loop(start: Int) {
       def getNext = Future {
-        Thread sleep randomSleepDuration
+        Thread sleep sleepDuration
         loop(start + GoogleStep)
       }
 
@@ -57,10 +56,11 @@ class GoogleScholarCrawler(captcha: Image => Future[String]) extends Crawler {
   }
 
   private def tryCaptcha[F](resp: Response): Future[Boolean] = {
-    val image: Option[String] = {
-      None
-      Some("http://eofdreams.com/data_images/dreams/cat/cat-07.jpg")
-    }
+    def unescape(s: String) = Try((xml.XML loadString ("<x>" + s + "</x>")).text).toOption
+
+    val image: Option[String] =
+      CaptchaRegex findFirstMatchIn resp.getResponseBody map (_ group CaptchaRegexGroup) flatMap
+        unescape map (resp.getUri.getScheme + "://" + resp.getUri.getHost + _)
 
     def submit(answer: String): Future[Boolean] = ???
 
