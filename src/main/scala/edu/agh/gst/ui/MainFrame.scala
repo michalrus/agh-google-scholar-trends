@@ -18,7 +18,7 @@ class MainFrame extends JFrame with SwingHelper {
 
   case class Tab(name: String, crawler: Crawler, chart: Chart)
 
-  private val crawlers = Tab("Google Scholar", new GoogleScholarCrawler, new Chart) ::
+  private val crawlers = Tab("Google Scholar", new GoogleScholarCrawler(showCaptcha), new Chart) ::
     Tab("Microsoft Something", new MicrosoftCrawler, new Chart) ::
     Nil
 
@@ -55,6 +55,13 @@ class MainFrame extends JFrame with SwingHelper {
 
   private def showError(s: String) =
     JOptionPane showMessageDialog(this, s, "Error", JOptionPane.WARNING_MESSAGE)
+
+  import concurrent._
+
+  private def showCaptcha(img: String) = {
+    val p = Promise[String]()
+    p.future
+  }
 
   private def onCrawled(years: Try[List[CrawlerEntry]], crawler: Tab) = laterOnUiThread {
     years match {
