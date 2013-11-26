@@ -1,6 +1,9 @@
 package edu.agh.gst.crawler
 
 import scala.util.{Success, Failure, Try}
+import java.net.URL
+import javax.imageio.ImageIO
+import java.awt.Image
 
 object GoogleScholarCrawler {
   private val rng = new java.util.Random
@@ -22,7 +25,7 @@ case class HttpError(response: Response)
 
 import dispatch._, Defaults._
 
-class GoogleScholarCrawler(captcha: String => Future[String]) extends Crawler {
+class GoogleScholarCrawler(captcha: Image => Future[String]) extends Crawler {
 
   import Crawler._, GoogleScholarCrawler._
 
@@ -55,15 +58,21 @@ class GoogleScholarCrawler(captcha: String => Future[String]) extends Crawler {
 
   private def tryCaptcha[F](resp: Response): Future[Boolean] = {
     val image: Option[String] = {
-      Some("http://eofdreams.com/data_images/dreams/cat/cat-07.jpg")
       None
+      Some("http://eofdreams.com/data_images/dreams/cat/cat-07.jpg")
     }
 
     def submit(answer: String): Future[Boolean] = ???
 
     image match {
-      case Some(img) => captcha(img) flatMap submit
+      case Some(img) => dloadImage(img) flatMap captcha flatMap submit
       case _ => Future failed new Exception("not a captcha request")
+    }
+  }
+
+  private def dloadImage(url: String): Future[Image] = Future {
+    concurrent.blocking {
+      ImageIO read new URL(url)
     }
   }
 

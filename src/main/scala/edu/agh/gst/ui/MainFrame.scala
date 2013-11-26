@@ -3,7 +3,7 @@ package edu.agh.gst.ui
 import javax.swing._
 import edu.agh.gst.SwingHelper
 import scala.util.Try
-import java.awt.{BorderLayout, Dimension}
+import java.awt.{Image, BorderLayout, Dimension}
 import java.awt.event.{ActionEvent, ActionListener}
 import edu.agh.gst.crawler._
 import edu.agh.gst.crawler.HttpError
@@ -58,8 +58,10 @@ class MainFrame extends JFrame with SwingHelper {
 
   import concurrent._
 
-  private def showCaptcha(img: String) = {
+  private def showCaptcha(img: Image) = {
     val p = Promise[String]()
+    val text = JOptionPane showInputDialog (this, new JLabel(new ImageIcon(img)), "Enter the captcha", JOptionPane.QUESTION_MESSAGE)
+    p complete Try(text)
     p.future
   }
 
