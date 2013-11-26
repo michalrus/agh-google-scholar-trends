@@ -5,14 +5,24 @@ import edu.agh.gst.SwingHelper
 import scala.util.{Failure, Try, Success}
 import java.awt.{BorderLayout, Dimension}
 import java.awt.event.{ActionEvent, ActionListener}
-import edu.agh.gst.crawler.{CrawlerEntry, HttpError, GoogleScholarCrawler}
+import edu.agh.gst.crawler._
+import edu.agh.gst.crawler.HttpError
+import scala.util.Failure
+import scala.util.Success
+import edu.agh.gst.crawler.CrawlerEntry
 
 class MainFrame extends JFrame with SwingHelper {
 
   private val query = new JTextField
   private val results = new JLabel("0")
-  private val gsCrawler = new GoogleScholarCrawler
-  private val chart = new Chart
+
+  case class Tab(name: String, crawler: Crawler, chart: Chart)
+
+  private val crawlers = Tab("Google Scholar", new GoogleScholarCrawler, new Chart) ::
+    Tab("Microsoft Something", new MicrosoftCrawler, new Chart) ::
+    Nil
+
+  private val total = new Chart
 
   laterOnUiThread {
     Try(UIManager setLookAndFeel UIManager.getSystemLookAndFeelClassName)
@@ -29,17 +39,29 @@ class MainFrame extends JFrame with SwingHelper {
 
   private def buildUi() {
     buildToolbar()
-    add(chart, BorderLayout.CENTER)
+    buildCharts()
+  }
+
+  private def buildCharts() {
+    val tabs = new JTabbedPane
+    add(tabs, BorderLayout.CENTER)
+
+    crawlers foreach { c =>
+      tabs addTab(c.name, c.chart)
+    }
+
+    tabs addTab("Total", total)
   }
 
   private def showError(s: String) =
     JOptionPane showMessageDialog(this, s, "Error", JOptionPane.WARNING_MESSAGE)
 
-  private def onCrawled(years: Try[List[CrawlerEntry]]) {
+  private def onCrawled(years: Try[List[CrawlerEntry]], crawler: Tab) {
     years match {
       case Success(es) =>
         numProcessed += es.length
-        chart addEntries es
+        crawler.chart addEntries es
+        total addEntries es
       case Failure(e: HttpError) =>
         showError(e.getMessage + "\n\n" + e.response.getResponseBody)
       case Failure(e) =>
@@ -62,8 +84,11 @@ class MainFrame extends JFrame with SwingHelper {
         (go :: query :: Nil) foreach (_ setEnabled false)
         numProcessed = 0
         val q = query.getText
-        chart setTitle q
-        (gsCrawler crawl q)(onCrawled)
+        crawlers foreach { c =>
+          c.chart setTitle q
+          (c.crawler crawl q)(onCrawled(_, c))
+        }
+        total setTitle q
       }
     }
     tb add go
