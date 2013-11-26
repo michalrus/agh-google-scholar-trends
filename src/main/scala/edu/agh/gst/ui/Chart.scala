@@ -17,6 +17,8 @@ class Chart extends JPanel {
   dataset addSeries citationsSeries
   private val jfc = ChartFactory createXYLineChart ("Accumulated article counts", "Year",
     "Number so far", dataset, PlotOrientation.VERTICAL, true, true, false)
+
+  setLayout(new BorderLayout)
   add(new ChartPanel(jfc), BorderLayout.CENTER)
 
   case class YearData(articles: Int, citations: Int) {
