@@ -61,7 +61,10 @@ class MainFrame extends JFrame with SwingHelper {
   private def showCaptcha(img: Image) = {
     val p = Promise[String]()
     val text = JOptionPane showInputDialog (this, new JLabel(new ImageIcon(img)), "Enter the captcha", JOptionPane.QUESTION_MESSAGE)
-    p complete Try(text)
+    p complete (Option(text) match {
+      case Some(t) => Success(t)
+      case _ => Failure(new Exception)
+    })
     p.future
   }
 
