@@ -1,9 +1,10 @@
 package edu.agh.gst.crawler
 
 import scala.util.{Success, Failure, Try}
-import java.net.URL
-import javax.imageio.ImageIO
 import java.awt.Image
+import scala.util.matching.Regex
+import com.ning.http.client.Cookie
+import javax.imageio.ImageIO
 
 object GoogleScholarCrawler {
   val GoogleStep = 10
@@ -15,6 +16,10 @@ object GoogleScholarCrawler {
 
   val CaptchaRegex = """src="(/sorry/image[^"]+)""".r
   val CaptchaRegexGroup = 1
+  val CFContinueRegex = """<input type="hidden" name="continue" value="([^"]+)""".r
+  val CFContinueRegexGroup = 1
+  val CFIdRegex = """<input type="hidden" name="id" value="([^"]+)""".r
+  val CFIdRegexGroup = 1
 }
 
 import com.ning.http.client.Response
@@ -26,7 +31,21 @@ import dispatch._, Defaults._
 
 class GoogleScholarCrawler(captcha: Image => Future[String]) extends Crawler {
 
-  import Crawler._, GoogleScholarCrawler._
+  import Crawler._, GoogleScholarCrawler._, collection.mutable
+
+  private object CookieHttp {
+    private val cookies = new mutable.HashMap[(String, String), Cookie]
+
+    def apply(req: Req) =
+      Http((req /: cookies)(_ addCookie _._2)) flatMap { resp =>
+        import collection.JavaConversions._
+        resp.getCookies foreach { c =>
+          cookies += (c.getDomain, c.getName) -> c
+        }
+        Future(resp)
+      }
+
+  }
 
   override def crawl[F](query: String)(f: Try[List[CrawlerEntry]] => F) {
     def loop(start: Int) {
@@ -56,25 +75,43 @@ class GoogleScholarCrawler(captcha: Image => Future[String]) extends Crawler {
   }
 
   private def tryCaptcha[F](resp: Response): Future[Boolean] = {
-    def unescape(s: String) = Try((xml.XML loadString ("<x>" + s + "</x>")).text).toOption
+    def get(r: Regex, group: Int) =
+      r findFirstMatchIn resp.getResponseBody map (_ group group) flatMap unescape
 
-    val image: Option[String] =
-      CaptchaRegex findFirstMatchIn resp.getResponseBody map (_ group CaptchaRegexGroup) flatMap
-        unescape map (resp.getUri.getScheme + "://" + resp.getUri.getHost + _)
+    val host = resp.getUri.getScheme + "://" + resp.getUri.getHost
 
-    def submit(answer: String): Future[Boolean] = ???
+    val x = for {
+      id <- get(CFIdRegex, CFIdRegexGroup)
+      continue <- get(CFContinueRegex, CFContinueRegexGroup)
+      image <- get(CaptchaRegex, CaptchaRegexGroup) map (host + _)
+    } yield {
+      def submit(answer: String): Future[Boolean] = {
+        val svc = url(host + "/sorry/Captcha").
+          addQueryParameter("continue", continue).
+          addQueryParameter("id", id).
+          addQueryParameter("captcha", answer).
+          setFollowRedirects(followRedirects = false) <:<
+          Map("User-Agent" -> UserAgent)
+        CookieHttp(svc) flatMap { resp =>
+          val succeeded_? = false
 
-    image match {
-      case Some(img) => dloadImage(img) flatMap captcha flatMap submit
-      case _ => Future failed new Exception("not a captcha request")
+          if (succeeded_?) Future(true)
+          else tryCaptcha(resp)
+        }
+      }
+
+      dloadImage(image) flatMap captcha flatMap submit
     }
+
+    x getOrElse (Future failed new Exception("not a captcha request"))
   }
 
-  private def dloadImage(url: String): Future[Image] = Future {
-    concurrent.blocking {
-      ImageIO read new URL(url)
+  private def dloadImage(imageUrl: String): Future[Image] =
+    CookieHttp(url(imageUrl)) flatMap { resp =>
+      if (resp.getStatusCode / 100 == 2)
+        Future(ImageIO read resp.getResponseBodyAsStream)
+      else Future failed new Exception
     }
-  }
 
   private def parse(r: String): (List[CrawlerEntry], Boolean) = {
     val entries = ((YearRegex findAllIn r).matchData map (_ group YearRegexGroup) map
@@ -91,7 +128,7 @@ class GoogleScholarCrawler(captcha: Image => Future[String]) extends Crawler {
       addQueryParameter("as_sdt", "0,5").
       setFollowRedirects(followRedirects = true) <:<
       Map("User-Agent" -> UserAgent)
-    Http(svc).either
+    CookieHttp(svc).either
   }
 
 }
