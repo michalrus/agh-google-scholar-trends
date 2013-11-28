@@ -8,7 +8,6 @@ import javax.imageio.ImageIO
 
 object GoogleScholarCrawler {
   val GoogleStep = 10
-  def sleepDuration = 1000L
 
   val YearRegex = """<div class="gs_a">.*?(\d\d\d\d)""".r
   val YearRegexGroup = 1
@@ -36,15 +35,18 @@ class GoogleScholarCrawler(captcha: Image => Future[String]) extends Crawler {
   private object CookieHttp {
     private val cookies = new mutable.HashMap[(String, String), Cookie]
 
-    def apply(req: Req) =
-      Http((req /: cookies)(_ addCookie _._2)) flatMap { resp =>
+    def apply(req: Req) = {
+      val svc = ((req /: cookies)(_ addCookie _._2) setFollowRedirects true) <:<
+        Map("User-Agent" -> UserAgent)
+
+      Http(svc) flatMap { resp =>
         import collection.JavaConversions._
         resp.getCookies foreach { c =>
           cookies += (c.getDomain, c.getName) -> c
         }
         Future(resp)
       }
-
+    }
   }
 
   override def crawl[F](query: String)(f: Try[List[CrawlerEntry]] => F) {
@@ -121,13 +123,12 @@ class GoogleScholarCrawler(captcha: Image => Future[String]) extends Crawler {
   }
 
   private def request(q: String, start: Int) = {
-    val svc = url("http://scholar.google.pl/scholar").
-      addQueryParameter("start", start.toString).
-      addQueryParameter("q", q).
-      addQueryParameter("hl", "en").
-      addQueryParameter("as_sdt", "0,5").
-      setFollowRedirects(followRedirects = true) <:<
-      Map("User-Agent" -> UserAgent)
+    val svc = url("http://scholar.google.pl/scholar") <<? Map(
+      "start" -> start.toString,
+      "q" -> q,
+      "hl" -> "en",
+      "as_sdt" -> "0,5"
+    )
     CookieHttp(svc).either
   }
 
