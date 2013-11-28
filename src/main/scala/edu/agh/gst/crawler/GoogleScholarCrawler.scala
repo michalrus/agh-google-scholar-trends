@@ -88,12 +88,10 @@ class GoogleScholarCrawler(captcha: Image => Future[String]) extends Crawler {
       image <- get(CaptchaRegex, CaptchaRegexGroup) map (host + _)
     } yield {
       def submit(answer: String): Future[Boolean] = {
-        val svc = url(host + "/sorry/Captcha").
-          addQueryParameter("continue", continue).
-          addQueryParameter("id", id).
-          addQueryParameter("captcha", answer).
-          setFollowRedirects(followRedirects = false) <:<
-          Map("User-Agent" -> UserAgent)
+        val svc = url(host + "/sorry/Captcha") <<? Map(
+          "continue" -> continue,
+          "id" -> id,
+          "captcha" -> answer)
         CookieHttp(svc) flatMap { resp =>
           val succeeded_? = false
 
