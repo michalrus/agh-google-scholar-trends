@@ -27,6 +27,9 @@ class MainFrame extends JFrame with SwingHelper {
   laterOnUiThread {
     Try(UIManager setLookAndFeel UIManager.getSystemLookAndFeelClassName)
 
+    Option(getClass getResource "/icon.png") foreach
+      (i => setIconImage(new ImageIcon(i).getImage))
+
     setTitle("agh-google-scholar-trends")
     setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE)
     setSize(new Dimension(800, 600))
