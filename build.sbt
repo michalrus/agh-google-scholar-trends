@@ -1,3 +1,7 @@
+import AssemblyKeys._ // put this at the top of the file
+
+assemblySettings
+
 name := "agh-google-scholar-trends"
 
 version := "1.0"
