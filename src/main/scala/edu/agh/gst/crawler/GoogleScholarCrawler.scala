@@ -11,7 +11,6 @@ object GoogleScholarCrawler {
 
   val YearRegex = """<div class="gs_a">.*?(\d\d\d\d)""".r
   val YearRegexGroup = 1
-  def isYear(i: Int) = i >= 1950 && i <= 2050
 
   val CaptchaRegex = """src="(/sorry/image[^"]+)""".r
   val CaptchaRegexGroup = 1
@@ -35,9 +34,19 @@ class GoogleScholarCrawler(captcha: Image => Future[String]) extends Crawler {
   private object CookieHttp {
     private val cookies = new mutable.HashMap[(String, String), Cookie]
 
+    private def addCookies(req: Req): Req = {
+      val raw = cookies.values map (c => c.getName + "=" + c.getValue)
+
+      if (raw.isEmpty) req
+      else req <:< Map("Cookie" -> (raw mkString "; "))
+    }
+
     def apply(req: Req) = {
-      val svc = ((req /: cookies)(_ addCookie _._2) setFollowRedirects true) <:<
-        Map("User-Agent" -> UserAgent)
+      val svc = addCookies((req setFollowRedirects true) <:<
+        Map(
+          "User-Agent" -> UserAgent,
+          "Accept-Language" -> AcceptLanguage
+        ))
 
       Http(svc) flatMap { resp =>
         import collection.JavaConversions._
@@ -93,7 +102,8 @@ class GoogleScholarCrawler(captcha: Image => Future[String]) extends Crawler {
           "id" -> id,
           "captcha" -> answer)
         CookieHttp(svc) flatMap { resp =>
-          val succeeded_? = false
+          val succeeded_? = (resp.getStatusCode / 100 == 2) &&
+            (resp.getResponseBody contains "Redirecting")
 
           if (succeeded_?) Future(true)
           else tryCaptcha(resp)
