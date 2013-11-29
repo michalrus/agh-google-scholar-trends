@@ -21,6 +21,8 @@ class Chart extends JPanel {
   private val plot = chart.getPlot.asInstanceOf[XYPlot]
   private val xAxis = plot.getDomainAxis.asInstanceOf[NumberAxis]
   xAxis setStandardTickUnits NumberAxis.createIntegerTickUnits
+  private val yAxis = plot.getRangeAxis.asInstanceOf[NumberAxis]
+  yAxis setStandardTickUnits NumberAxis.createIntegerTickUnits
 
   setLayout(new BorderLayout)
   add(new ChartPanel(chart), BorderLayout.CENTER)
