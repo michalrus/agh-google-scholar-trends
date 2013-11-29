@@ -15,11 +15,15 @@ class Chart extends JPanel {
   private val dataset = new XYSeriesCollection
   dataset addSeries articlesSeries
   dataset addSeries citationsSeries
-  private val jfc = ChartFactory createXYLineChart ("Accumulated article counts", "Year",
+  private val chart = ChartFactory createXYLineChart ("Accumulated article counts", "Year",
     "Number so far", dataset, PlotOrientation.VERTICAL, true, true, false)
 
+  private val plot = chart.getPlot.asInstanceOf[XYPlot]
+  private val xAxis = plot.getDomainAxis.asInstanceOf[NumberAxis]
+  xAxis setStandardTickUnits NumberAxis.createIntegerTickUnits
+
   setLayout(new BorderLayout)
-  add(new ChartPanel(jfc), BorderLayout.CENTER)
+  add(new ChartPanel(chart), BorderLayout.CENTER)
 
   case class YearData(articles: Int, citations: Int) {
     def +(that: YearData) = YearData(this.articles + that.articles, this.citations + that.citations)
@@ -28,7 +32,7 @@ class Chart extends JPanel {
   import collection.mutable
   private val data = new mutable.HashMap[Int, YearData]
 
-  def setTitle(s: String) = jfc setTitle s
+  def setTitle(s: String) = chart setTitle s
 
   def addEntries (entries: List[CrawlerEntry]) {
     entries foreach { e =>
