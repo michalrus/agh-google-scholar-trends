@@ -19,7 +19,7 @@ class MainFrame extends JFrame with SwingHelper {
   case class Tab(name: String, crawler: Crawler, chart: Chart)
 
   private val crawlers = Tab("Google Scholar", new GoogleScholarCrawler(showCaptcha), new Chart) ::
-    Tab("Microsoft Something", new MicrosoftCrawler, new Chart) ::
+    Tab("Microsoft Academic Search", new MicrosoftCrawler, new Chart) ::
     Nil
 
   private val total = new Chart
