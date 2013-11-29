@@ -35,7 +35,16 @@ class GoogleScholarCrawler(captcha: Image => Future[String]) extends Crawler {
     private val cookies = new mutable.HashMap[(String, String), Cookie]
 
     private def addCookies(req: Req): Req = {
-      val raw = cookies.values map (c => c.getName + "=" + c.getValue)
+      def host(u: String) = { // host("htttttps://www.www.google.com/asd") == "www.www.google.com"
+        val np = (u splitAt ((u indexOf "//") + 2))._2
+        val i = np indexOf "/"
+        if (i < 0) np
+        else (np splitAt i)._1
+      }
+
+      def fromDomain(c: Cookie) = host(req.url) endsWith c.getDomain
+
+      val raw = cookies.values filter fromDomain map (c => c.getName + "=" + c.getValue)
 
       if (raw.isEmpty) req
       else req <:< Map("Cookie" -> (raw mkString "; "))
