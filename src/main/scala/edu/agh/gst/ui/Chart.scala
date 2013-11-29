@@ -4,25 +4,38 @@ import javax.swing.JPanel
 import org.jfree.chart.{ChartPanel, ChartFactory, JFreeChart}
 import org.jfree.data.xy.{XYSeriesCollection, XYSeries}
 import org.jfree.chart.plot.{XYPlot, PlotOrientation}
-import java.awt.BorderLayout
+import java.awt.{BasicStroke, Color, BorderLayout}
 import org.jfree.chart.axis.{NumberTickUnit, NumberAxis}
 import edu.agh.gst.crawler.CrawlerEntry
+import org.jfree.chart.renderer.xy.StandardXYItemRenderer
 
 class Chart extends JPanel {
 
   private val articlesSeries = new XYSeries("Number of articles")
   private val citationsSeries = new XYSeries("Number of citations")
-  private val dataset = new XYSeriesCollection
-  dataset addSeries articlesSeries
-  dataset addSeries citationsSeries
+  private val articleDataset, citeDataset = new XYSeriesCollection
+  articleDataset addSeries articlesSeries
+  citeDataset addSeries citationsSeries
   private val chart = ChartFactory createXYLineChart ("Accumulated article counts", "Year",
-    "Number so far", dataset, PlotOrientation.VERTICAL, true, true, false)
+    "Number of articles", articleDataset, PlotOrientation.VERTICAL, true, true, false)
 
-  private val plot = chart.getPlot.asInstanceOf[XYPlot]
+  private val plot = chart.getXYPlot
   private val xAxis = plot.getDomainAxis.asInstanceOf[NumberAxis]
   xAxis setStandardTickUnits NumberAxis.createIntegerTickUnits
-  private val yAxis = plot.getRangeAxis.asInstanceOf[NumberAxis]
-  yAxis setStandardTickUnits NumberAxis.createIntegerTickUnits
+  private val articleAxis = plot.getRangeAxis.asInstanceOf[NumberAxis]
+  articleAxis setStandardTickUnits NumberAxis.createIntegerTickUnits
+
+  plot.getRenderer setSeriesStroke(0, new BasicStroke(2.0f))
+
+  private val citeAxis = new NumberAxis("Number of citations")
+  citeAxis setStandardTickUnits NumberAxis.createIntegerTickUnits
+  plot setRangeAxis (1, citeAxis)
+  plot setDataset (1, citeDataset)
+  plot mapDatasetToRangeAxis (1, 1)
+  private val citeRenderer = new StandardXYItemRenderer
+  citeRenderer setSeriesPaint (0, Color.BLUE)
+  citeRenderer setSeriesStroke (0, new BasicStroke(2.0f))
+  plot setRenderer (1, citeRenderer)
 
   setLayout(new BorderLayout)
   add(new ChartPanel(chart), BorderLayout.CENTER)
