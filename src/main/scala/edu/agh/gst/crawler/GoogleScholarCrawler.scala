@@ -5,12 +5,15 @@ import java.awt.Image
 import scala.util.matching.Regex
 import com.ning.http.client.Cookie
 import javax.imageio.ImageIO
+import scala.xml.Node
 
 object GoogleScholarCrawler {
   val GoogleStep = 10
 
-  val YearRegex = """<div class="gs_a">.*?(\d\d\d\d)""".r
+  val YearRegex = """(\d\d\d\d)""".r
   val YearRegexGroup = 1
+  val CitedRegex = """Cited by (\d+)""".r
+  val CitedRegexGroup = 1
 
   val CaptchaRegex = """src="(/sorry/image[^"]+)""".r
   val CaptchaRegexGroup = 1
@@ -97,8 +100,26 @@ class GoogleScholarCrawler(captcha: Image => Future[String]) extends Crawler {
     }
 
   private def parse(r: String): (List[CrawlerEntry], Boolean) = {
-    val entries = ((YearRegex findAllIn r).matchData map (_ group YearRegexGroup) map
-      (s => Try(s.toInt).toOption)).flatten.toList filter isYear map (CrawlerEntry(_, 0))
+    import net.liftweb.util.Html5
+
+    def get(n: Node, tag: String, clazz: String) =
+      n \\ tag filter (_ attribute "class" exists (_.text.split(" \t\n\r".toCharArray) contains clazz))
+
+    def toInt(s: String) = Try(s.toInt).toOption
+
+    val cs = for {
+      e <- (Html5 parse r).toSeq
+      r <- get(e, "div", "gs_r") flatMap (get(_, "div", "gs_ri"))
+      tyear <- get(r, "div", "gs_a") lift 0 map (_.text)
+      year <- YearRegex findFirstMatchIn tyear map (_ group YearRegexGroup) flatMap toInt
+      if isYear(year)
+    } yield {
+      val cited = get(r, "div", "gs_fl") lift 0 map (_.text) flatMap (
+        CitedRegex findFirstMatchIn _ map (_ group CitedRegexGroup) flatMap toInt)
+      CrawlerEntry(year, cited getOrElse 0)
+    }
+
+    val entries = cs.toList
 
     (entries, entries.nonEmpty)
   }
