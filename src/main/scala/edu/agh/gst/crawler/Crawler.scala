@@ -28,10 +28,9 @@ object Crawler {
   def isYear(i: Int) = i >= MinYear && i <= MaxYear
 
   private val rng = new util.Random
-  private val MinSleep = 1000L
-  private val MaxSleep = 4000L
-  private val DiffSleep = MaxSleep - MinSleep
-  def sleepDuration = MinSleep + rng.nextLong % DiffSleep
+  private val MinSleep = 1000
+  private val MaxSleep = 4000
+  def sleepDuration = ((MinSleep min MaxSleep) + rng.nextInt(MaxSleep - MinSleep)).toLong
 
   val UserAgent = "Mozilla/5.0 (Windows NT 6.0; rv:15.0) Gecko/20100101 Firefox/15.0.1"
   val AcceptLanguage = "en-us,en;q=0.5"
