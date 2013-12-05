@@ -90,6 +90,8 @@ class MainFrame extends JFrame with SwingHelper {
 
   private def onCrawled(years: Try[List[CrawlerEntry]], crawler: Tab) = laterOnUiThread {
     years match {
+      case Success(es) if es.isEmpty =>
+        showError("No more articles!")
       case Success(es) =>
         numProcessed += es.length
         crawler.chart addEntries es
