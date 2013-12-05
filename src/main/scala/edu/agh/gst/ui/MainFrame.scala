@@ -130,6 +130,8 @@ class MainFrame extends JFrame with SwingHelper {
     tb add new JLabel("Articles processed: ")
 
     tb add results
+
+    ()
   }
 
   private var _numProcessed = 0

@@ -21,7 +21,8 @@ import javax.swing.SwingUtilities
 
 trait SwingHelper {
 
-  implicit def blockToRunnable[A](f: => A) = new Runnable {
+  import scala.language.implicitConversions
+  implicit def blockToRunnable(f: => Unit) = new Runnable {
     def run() = f
   }
 
@@ -35,6 +36,7 @@ trait SwingHelper {
       Thread sleep ms
       SwingUtilities invokeLater r
     }
+    ()
   }
 
 }

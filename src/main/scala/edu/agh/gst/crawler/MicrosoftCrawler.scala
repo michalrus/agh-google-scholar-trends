@@ -21,6 +21,6 @@ import scala.util.Try
 
 class MicrosoftCrawler extends Crawler {
 
-  def crawl[F](query: String)(f: (Try[List[CrawlerEntry]]) => F) {}
+  def crawl(query: String)(f: (Try[List[CrawlerEntry]]) => Unit) {}
 
 }

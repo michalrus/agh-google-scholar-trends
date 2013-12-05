@@ -87,8 +87,8 @@ class Chart extends JPanel {
     articlesSeries clear()
     citationsSeries clear()
     accd foreach { case (y, d) =>
-      articlesSeries add(y, d.articles)
-      citationsSeries add(y, d.citations)
+      articlesSeries add(y.toDouble, d.articles.toDouble)
+      citationsSeries add(y.toDouble, d.citations.toDouble)
     }
   }
 
