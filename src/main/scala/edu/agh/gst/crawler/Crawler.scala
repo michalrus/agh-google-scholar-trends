@@ -22,6 +22,7 @@ import com.ning.http.client.Response
 import dispatch._, Defaults._
 import java.awt.Image
 import javax.imageio.ImageIO
+import scala.xml.Node
 
 case class HttpError(response: Response)
   extends Exception(s"Failed with HTTP ${response.getStatusCode} ${response.getStatusText}.")
@@ -50,6 +51,11 @@ object Crawler {
         Future(ImageIO read resp.getResponseBodyAsStream)
       else Future failed new Exception
     }
+
+  def selector(n: Node, tag: String, clazz: String) =
+    n \\ tag filter (_ attribute "class" exists (_.text.split(" \t\n\r".toCharArray) contains clazz))
+
+  def toInt(s: String) = Try(s.toInt).toOption
 
 }
 

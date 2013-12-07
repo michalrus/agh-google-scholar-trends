@@ -105,19 +105,14 @@ class GoogleScholarCrawler(captcha: Image => Future[String]) extends Crawler {
   private def parse(r: String): (List[CrawlerEntry], Boolean) = {
     import net.liftweb.util.Html5
 
-    def get(n: Node, tag: String, clazz: String) =
-      n \\ tag filter (_ attribute "class" exists (_.text.split(" \t\n\r".toCharArray) contains clazz))
-
-    def toInt(s: String) = Try(s.toInt).toOption
-
     val cs = for {
       e <- (Html5 parse r).toSeq
-      r <- get(e, "div", "gs_r") flatMap (get(_, "div", "gs_ri"))
-      tyear <- get(r, "div", "gs_a") lift 0 map (_.text)
+      r <- selector(e, "div", "gs_r") flatMap (selector(_, "div", "gs_ri"))
+      tyear <- selector(r, "div", "gs_a") lift 0 map (_.text)
       year <- YearRegex findFirstMatchIn tyear map (_ group YearRegexGroup) flatMap toInt
       if isYear(year)
     } yield {
-      val cited = get(r, "div", "gs_fl") lift 0 map (_.text) flatMap (
+      val cited = selector(r, "div", "gs_fl") lift 0 map (_.text) flatMap (
         CitedRegex findFirstMatchIn _ map (_ group CitedRegexGroup) flatMap toInt)
       CrawlerEntry(year, cited getOrElse 0)
     }
