@@ -17,7 +17,7 @@
 
 package edu.agh.gst.crawler
 
-import scala.util.Try
+import scala.util.{Failure, Try}
 import com.ning.http.client.Response
 import dispatch._, Defaults._
 import java.awt.Image
@@ -61,6 +61,26 @@ object Crawler {
 
 trait Crawler {
 
-  def crawl(query: String)(f: Try[List[CrawlerEntry]] => Unit)
+  final def crawl(query: String)(f: Try[List[CrawlerEntry]] => Unit) {
+    def loop(start: Int) {
+      val r = request(query, start)
+
+      for (exc <- r.left)
+        f(Failure(exc))
+
+      for (resp <- r.right)
+        handleResponse(f)(resp)(Future {
+          concurrent.blocking(Thread sleep Crawler.sleepDuration)
+          loop(start + requestStep)
+        })
+    }
+    loop(0)
+  }
+
+  protected def handleResponse(f: Try[List[CrawlerEntry]] => Unit)(resp: Response)(andThen: => Future[Unit])
+
+  protected def request(q: String, start: Int): Future[Either[Throwable, Response]]
+
+  protected def requestStep: Int
 
 }

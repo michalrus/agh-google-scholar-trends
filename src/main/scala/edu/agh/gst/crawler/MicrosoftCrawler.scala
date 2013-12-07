@@ -18,6 +18,8 @@
 package edu.agh.gst.crawler
 
 import scala.util.{Failure, Success, Try}
+import com.ning.http.client.Response
+import dispatch._ //, Defaults._
 
 object MicrosoftCrawler {
   val MicrosoftStep = 10
@@ -32,28 +34,23 @@ class MicrosoftCrawler extends Crawler {
 
   import Crawler._, MicrosoftCrawler._
 
-  import dispatch._, Defaults._
+  protected def requestStep = MicrosoftStep
 
-  def crawl(query: String)(f: (Try[List[CrawlerEntry]]) => Unit) {
-    def loop(start: Int) {
-      def genNext = Future {
-        concurrent.blocking(Thread sleep sleepDuration)
-        loop(start + MicrosoftStep)
-      }
+  protected def request(q: String, start: Int) = {
+    val svc = url("http://academic.research.microsoft.com/Search") <<? Map(
+      "query" -> q,
+      "start" -> (start + 1).toString,
+      "end" -> (start + MicrosoftStep).toString
+    )
+    CookieHttp(svc).either
+  }
 
-      val r = request(query, start)
-
-      for (exc <- r.left)
-        f(Failure(exc))
-
-      for (resp <- r.right)
-        if (resp.getStatusCode / 100 == 2) {
-          val (entries, more_?) = parse(resp.getResponseBody)
-          if (more_?) genNext
-          f(Success(entries))
-        } else f(Failure(HttpError(resp)))
-    }
-    loop(0)
+  protected def handleResponse(f: (Try[List[CrawlerEntry]]) => Unit)(resp: Response)(andThen: => Future[Unit]) {
+    if (resp.getStatusCode / 100 == 2) {
+      val (entries, more_?) = parse(resp.getResponseBody)
+      if (more_?) andThen
+      f(Success(entries))
+    } else f(Failure(HttpError(resp)))
   }
 
   private def parse(r: String): (List[CrawlerEntry], Boolean) = {
@@ -75,15 +72,6 @@ class MicrosoftCrawler extends Crawler {
     val entries = cs.toList
 
     (entries, entries.nonEmpty)
-  }
-
-  private def request(q: String, start: Int) = {
-    val svc = url("http://academic.research.microsoft.com/Search") <<? Map(
-      "query" -> q,
-      "start" -> (start + 1).toString,
-      "end" -> (start + MicrosoftStep).toString
-    )
-    CookieHttp(svc).either
   }
 
 }

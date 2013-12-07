@@ -20,7 +20,6 @@ package edu.agh.gst.crawler
 import scala.util.{Success, Failure, Try}
 import java.awt.Image
 import scala.util.matching.Regex
-import scala.xml.Node
 import com.ning.http.client.Response
 import dispatch._, Defaults._
 
@@ -44,31 +43,47 @@ class GoogleScholarCrawler(captcha: Image => Future[String]) extends Crawler {
 
   import Crawler._, GoogleScholarCrawler._
 
-  override def crawl(query: String)(f: Try[List[CrawlerEntry]] => Unit) {
-    def loop(start: Int) {
-      def getNext = Future {
-        concurrent.blocking(Thread sleep sleepDuration)
-        loop(start + GoogleStep)
-      }
+  protected def requestStep = GoogleStep
 
-      val r = request(query, start)
+  protected def request(q: String, start: Int) = {
+    val svc = url("http://scholar.google.pl/scholar") <<? Map(
+      "start" -> start.toString,
+      "q" -> q,
+      "hl" -> "en",
+      "as_sdt" -> "0,5"
+    )
+    CookieHttp(svc).either
+  }
 
-      for (exc <- r.left)
-        f(Failure(exc))
+  protected def handleResponse(f: (Try[List[CrawlerEntry]]) => Unit)(resp: Response)(andThen: => Future[Unit]) {
+    if (resp.getStatusCode / 100 == 2) {
+      val (entries, more_?) = parse(resp.getResponseBody)
+      if (more_?) andThen
+      f(Success(entries))
+    } else tryCaptcha(resp) onComplete {
+      case Success(true) => andThen
+      case _ => f(Failure(HttpError(resp)))
+    }
+  }
 
-      for (resp <- r.right) {
-        if (resp.getStatusCode / 100 == 2) {
-          val (entries, more_?) = parse(resp.getResponseBody)
-          if (more_?) getNext
-          f(Success(entries))
-        } else tryCaptcha(resp) onComplete {
-          case Success(true) => getNext
-          case _ => f(Failure(HttpError(resp)))
-        }
-      }
+  private def parse(r: String): (List[CrawlerEntry], Boolean) = {
+    import net.liftweb.util.Html5
+
+    val cs = for {
+      e <- (Html5 parse r).toSeq
+      r <- selector(e, "div", "gs_r") flatMap (selector(_, "div", "gs_ri"))
+      tyear <- selector(r, "div", "gs_a") lift 0 map (_.text)
+      year <- YearRegex findFirstMatchIn tyear map (_ group YearRegexGroup) flatMap toInt
+      if isYear(year)
+    } yield {
+      val cited = selector(r, "div", "gs_fl") lift 0 map (_.text) flatMap (
+        CitedRegex findFirstMatchIn _ map (_ group CitedRegexGroup) flatMap toInt)
+      CrawlerEntry(year, cited getOrElse 0)
     }
 
-    loop(0)
+    val entries = cs.toList
+
+    (entries, entries.nonEmpty)
   }
 
   private def tryCaptcha[F](resp: Response): Future[Boolean] = {
@@ -100,36 +115,6 @@ class GoogleScholarCrawler(captcha: Image => Future[String]) extends Crawler {
     }
 
     x getOrElse (Future failed new Exception("not a captcha request"))
-  }
-
-  private def parse(r: String): (List[CrawlerEntry], Boolean) = {
-    import net.liftweb.util.Html5
-
-    val cs = for {
-      e <- (Html5 parse r).toSeq
-      r <- selector(e, "div", "gs_r") flatMap (selector(_, "div", "gs_ri"))
-      tyear <- selector(r, "div", "gs_a") lift 0 map (_.text)
-      year <- YearRegex findFirstMatchIn tyear map (_ group YearRegexGroup) flatMap toInt
-      if isYear(year)
-    } yield {
-      val cited = selector(r, "div", "gs_fl") lift 0 map (_.text) flatMap (
-        CitedRegex findFirstMatchIn _ map (_ group CitedRegexGroup) flatMap toInt)
-      CrawlerEntry(year, cited getOrElse 0)
-    }
-
-    val entries = cs.toList
-
-    (entries, entries.nonEmpty)
-  }
-
-  private def request(q: String, start: Int) = {
-    val svc = url("http://scholar.google.pl/scholar") <<? Map(
-      "start" -> start.toString,
-      "q" -> q,
-      "hl" -> "en",
-      "as_sdt" -> "0,5"
-    )
-    CookieHttp(svc).either
   }
 
 }
