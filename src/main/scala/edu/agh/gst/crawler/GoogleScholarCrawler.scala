@@ -47,7 +47,7 @@ class GoogleScholarCrawler(captcha: Image => Future[String]) extends Crawler {
   override def crawl(query: String)(f: Try[List[CrawlerEntry]] => Unit) {
     def loop(start: Int) {
       def getNext = Future {
-        Thread sleep sleepDuration
+        concurrent.blocking(Thread sleep sleepDuration)
         loop(start + GoogleStep)
       }
 
