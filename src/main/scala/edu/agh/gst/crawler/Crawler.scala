@@ -18,6 +18,13 @@
 package edu.agh.gst.crawler
 
 import scala.util.Try
+import com.ning.http.client.Response
+import dispatch._, Defaults._
+import java.awt.Image
+import javax.imageio.ImageIO
+
+case class HttpError(response: Response)
+  extends Exception(s"Failed with HTTP ${response.getStatusCode} ${response.getStatusText}.")
 
 case class CrawlerEntry(year: Int, citations: Int)
 
@@ -36,6 +43,13 @@ object Crawler {
   val AcceptLanguage = "en-us,en;q=0.5"
 
   def unescape(s: String) = Try((xml.XML loadString ("<x>" + s + "</x>")).text).toOption
+
+  def dloadImage(imageUrl: String): Future[Image] =
+    CookieHttp(url(imageUrl)) flatMap { resp =>
+      if (resp.getStatusCode / 100 == 2)
+        Future(ImageIO read resp.getResponseBodyAsStream)
+      else Future failed new Exception
+    }
 
 }
 

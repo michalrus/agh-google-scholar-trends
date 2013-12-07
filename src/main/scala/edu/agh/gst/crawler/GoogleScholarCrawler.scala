@@ -20,9 +20,9 @@ package edu.agh.gst.crawler
 import scala.util.{Success, Failure, Try}
 import java.awt.Image
 import scala.util.matching.Regex
-import com.ning.http.client.Cookie
-import javax.imageio.ImageIO
 import scala.xml.Node
+import com.ning.http.client.Response
+import dispatch._, Defaults._
 
 object GoogleScholarCrawler {
   val GoogleStep = 10
@@ -39,13 +39,6 @@ object GoogleScholarCrawler {
   val CFIdRegex = """<input type="hidden" name="id" value="([^"]+)""".r
   val CFIdRegexGroup = 1
 }
-
-import com.ning.http.client.Response
-
-case class HttpError(response: Response)
-  extends Exception(s"Failed with HTTP ${response.getStatusCode} ${response.getStatusText}.")
-
-import dispatch._, Defaults._
 
 class GoogleScholarCrawler(captcha: Image => Future[String]) extends Crawler {
 
@@ -108,13 +101,6 @@ class GoogleScholarCrawler(captcha: Image => Future[String]) extends Crawler {
 
     x getOrElse (Future failed new Exception("not a captcha request"))
   }
-
-  private def dloadImage(imageUrl: String): Future[Image] =
-    CookieHttp(url(imageUrl)) flatMap { resp =>
-      if (resp.getStatusCode / 100 == 2)
-        Future(ImageIO read resp.getResponseBodyAsStream)
-      else Future failed new Exception
-    }
 
   private def parse(r: String): (List[CrawlerEntry], Boolean) = {
     import net.liftweb.util.Html5
