@@ -17,10 +17,12 @@
 
 package edu.agh.gst.crawler
 
-import scala.util.Try
+import scala.util.{Success, Try}
 
 class MicrosoftCrawler extends Crawler {
 
-  def crawl(query: String)(f: (Try[List[CrawlerEntry]]) => Unit) {}
+  def crawl(query: String)(f: (Try[List[CrawlerEntry]]) => Unit) {
+    f(Success(Nil))
+  }
 
 }

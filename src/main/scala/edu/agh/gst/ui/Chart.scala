@@ -74,6 +74,11 @@ class Chart extends JPanel {
     refresh()
   }
 
+  def clearEntries() {
+    data clear()
+    refresh()
+  }
+
   private def refresh() {
     val vec = data.toVector.sortWith {
       case ((y1, _), (y2, _)) => y1 < y2

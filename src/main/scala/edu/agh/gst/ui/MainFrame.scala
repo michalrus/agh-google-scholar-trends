@@ -30,10 +30,12 @@ import edu.agh.gst.crawler.CrawlerEntry
 
 class MainFrame extends JFrame with SwingHelper {
 
+  private val go = new JButton("Go!")
   private val query = new JTextField
   private val results = new JLabel("0")
+  private val controls = go :: query :: Nil
 
-  case class Tab(name: String, crawler: Crawler, chart: Chart)
+  case class Tab(name: String, crawler: Crawler, chart: Chart, var finished: Boolean = false)
 
   private val crawlers = Tab("Google Scholar", new GoogleScholarCrawler(showCaptcha), new Chart) ::
     Tab("Microsoft Academic Search", new MicrosoftCrawler, new Chart) ::
@@ -91,7 +93,11 @@ class MainFrame extends JFrame with SwingHelper {
   private def onCrawled(years: Try[List[CrawlerEntry]], crawler: Tab) = laterOnUiThread {
     years match {
       case Success(es) if es.isEmpty =>
-        showError("No more articles!")
+        crawler.finished = true
+        if (crawlers forall (_.finished)) {
+          showError("No more articles!")
+          controls foreach (_ setEnabled true)
+        }
       case Success(es) =>
         numProcessed += es.length
         crawler.chart addEntries es
@@ -112,17 +118,21 @@ class MainFrame extends JFrame with SwingHelper {
 
     tb add query
 
-    val go = new JButton("Go!")
     go addActionListener new ActionListener {
       def actionPerformed(e: ActionEvent) = {
-        (go :: query :: Nil) foreach (_ setEnabled false)
+        controls foreach (_ setEnabled false)
         numProcessed = 0
         val q = query.getText
+        def restart(ch: Chart) {
+          ch.clearEntries()
+          ch setTitle q
+        }
+        restart(total)
         crawlers foreach { c =>
-          c.chart setTitle q
+          c.finished = false
+          restart(c.chart)
           (c.crawler crawl q)(onCrawled(_, c))
         }
-        total setTitle q
       }
     }
     tb add go
