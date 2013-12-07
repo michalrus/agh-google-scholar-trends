@@ -68,11 +68,11 @@ class MainFrame extends JFrame with SwingHelper {
     val tabs = new JTabbedPane
     add(tabs, BorderLayout.CENTER)
 
+    tabs addTab("Total", total)
+
     crawlers foreach { c =>
       tabs addTab(c.name, c.chart)
     }
-
-    tabs addTab("Total", total)
   }
 
   private def showError(s: String) =
