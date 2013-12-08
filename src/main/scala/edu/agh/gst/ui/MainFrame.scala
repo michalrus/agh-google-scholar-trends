@@ -118,17 +118,23 @@ class MainFrame extends JFrame with SwingHelper {
 
     tb add query
 
+    val theSame = new JCheckBox("Same for all")
+    theSame setSelected true
+    tb add theSame
+
+    tb addSeparator()
+
     go addActionListener new ActionListener {
       def actionPerformed(e: ActionEvent) = {
         controls foreach (_ setEnabled false)
         numProcessed = 0
-        val q = query.getText
+        val qt = query.getText
         def restart(ch: Chart) {
           ch.clearEntries()
-          ch setTitle q
+          ch setTitle qt
         }
         restart(total)
-        crawlers foreach { c =>
+        (crawlers zip getQueries(theSame.isSelected, qt)) foreach { case (c, q) =>
           c.finished = false
           restart(c.chart)
           (c.crawler crawl q)(onCrawled(_, c))
@@ -144,6 +150,18 @@ class MainFrame extends JFrame with SwingHelper {
     tb add results
 
     ()
+  }
+
+  private def getQueries(same: Boolean, default: String): List[String] = {
+    if (same) crawlers map (_ => default)
+    else crawlers map { cr =>
+      val text = JOptionPane.showInputDialog(this, s"Enter a specialized query for ${cr.name}:",
+        cr.name, JOptionPane.QUESTION_MESSAGE, null, null, default).toString
+      Option(text) match {
+        case Some(t) => t
+        case _ => default
+      }
+    }
   }
 
   private var _numProcessed = 0
