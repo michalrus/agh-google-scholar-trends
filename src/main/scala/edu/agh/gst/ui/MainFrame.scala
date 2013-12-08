@@ -33,7 +33,8 @@ class MainFrame extends JFrame with SwingHelper {
   private val go = new JButton("Go!")
   private val query = new JTextField
   private val results = new JLabel("0")
-  private val controls = go :: query :: Nil
+  private val theSame = new JCheckBox("Same for all")
+  private val controls = go :: query :: theSame :: Nil
 
   case class Tab(name: String, crawler: Crawler, chart: Chart, var finished: Boolean = false)
 
@@ -118,7 +119,6 @@ class MainFrame extends JFrame with SwingHelper {
 
     tb add query
 
-    val theSame = new JCheckBox("Same for all")
     theSame setSelected true
     tb add theSame
 
