@@ -30,11 +30,11 @@ import edu.agh.gst.crawler.CrawlerEntry
 
 class MainFrame extends JFrame with SwingHelper {
 
-  private val go = new JButton("Go!")
-  private val query = new JTextField
-  private val results = new JLabel("0")
-  private val theSame = new JCheckBox("Same for all")
-  private val controls = go :: query :: theSame :: Nil
+  private lazy val go = new JButton("Go!")
+  private lazy val query = new JTextField
+  private lazy val results = new JLabel("0")
+  private lazy val theSame = new JCheckBox("Same for all")
+  private lazy val controls = go :: query :: theSame :: Nil
 
   case class Tab(name: String, crawler: Crawler, chart: Chart, var finished: Boolean = false)
 
@@ -55,9 +55,10 @@ class MainFrame extends JFrame with SwingHelper {
     setSize(new Dimension(800, 600))
     setMinimumSize(new Dimension(400, 300))
     setLocationRelativeTo(null)
-    setVisible(true)
 
     buildUi()
+
+    setVisible(true)
   }
 
   private def buildUi() {
