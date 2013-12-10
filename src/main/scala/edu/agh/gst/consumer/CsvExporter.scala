@@ -17,15 +17,12 @@
 
 package edu.agh.gst.consumer
 
-import edu.agh.gst.crawler.CrawlerEntry
 import java.io.File
 
 class CsvExporter(directory: Option[File]) extends Consumer {
 
-  def reset(title: String) {
-  }
+  def refresh(title: String, source: Accumulator) {
 
-  def consume(entries: List[CrawlerEntry]) {
   }
 
 }

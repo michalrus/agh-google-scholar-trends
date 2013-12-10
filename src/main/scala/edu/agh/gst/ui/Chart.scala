@@ -25,7 +25,7 @@ import java.awt.{BasicStroke, Color, BorderLayout}
 import org.jfree.chart.axis.{NumberTickUnit, NumberAxis}
 import edu.agh.gst.crawler.CrawlerEntry
 import org.jfree.chart.renderer.xy.StandardXYItemRenderer
-import edu.agh.gst.consumer.Consumer
+import edu.agh.gst.consumer.{Accumulator, Consumer}
 
 class Chart extends JPanel with Consumer {
 
@@ -58,40 +58,12 @@ class Chart extends JPanel with Consumer {
   setLayout(new BorderLayout)
   add(new ChartPanel(chart), BorderLayout.CENTER)
 
-  case class YearData(articles: Int, citations: Int) {
-    def +(that: YearData) = YearData(this.articles + that.articles, this.citations + that.citations)
-  }
-
-  import collection.mutable
-  private val data = new mutable.HashMap[Int, YearData]
-
-  def reset(title: String) {
+  def refresh(title: String, source: Accumulator) {
     chart setTitle title
-    data clear()
-    refresh()
-  }
-
-  def consume(entries: List[CrawlerEntry]) {
-    entries foreach { e =>
-      val old = data getOrElse (e.year, YearData(0, 0))
-      data += e.year -> (old + YearData(1, e.citations))
-    }
-    refresh()
-  }
-
-  private def refresh() {
-    val vec = data.toVector.sortWith {
-      case ((y1, _), (y2, _)) => y1 < y2
-    }
-
-    val accd = if (vec.isEmpty) Vector.empty
-    else (vec.tail scanLeft vec.head) {
-      case ((_, acc), (y, num)) => (y, acc + num)
-    }
 
     articlesSeries clear()
     citationsSeries clear()
-    accd foreach { case (y, d) =>
+    source.data foreach { case (y, d) =>
       articlesSeries add(y.toDouble, d.articles.toDouble)
       citationsSeries add(y.toDouble, d.citations.toDouble)
     }

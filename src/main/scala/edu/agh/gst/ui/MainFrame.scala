@@ -21,13 +21,13 @@ import javax.swing._
 import edu.agh.gst.SwingHelper
 import scala.util.Try
 import java.awt.{Image, BorderLayout, Dimension}
-import java.awt.event.{WindowEvent, ActionEvent, ActionListener}
+import java.awt.event.{ActionEvent, ActionListener}
 import edu.agh.gst.crawler._
 import edu.agh.gst.crawler.HttpError
 import scala.util.Failure
 import scala.util.Success
 import edu.agh.gst.crawler.CrawlerEntry
-import edu.agh.gst.consumer.{CsvExporter, Consumer}
+import edu.agh.gst.consumer.{Accumulator, CsvExporter, Consumer}
 
 class MainFrame extends JFrame with SwingHelper {
 
@@ -37,7 +37,10 @@ class MainFrame extends JFrame with SwingHelper {
   private lazy val theSame = new JCheckBox("Same for all")
   private lazy val controls = go :: query :: theSame :: Nil
 
-  case class Tab(name: String, crawler: Crawler, consumers: List[Consumer], var finished: Boolean = false)
+  case class Tab(name: String, crawler: Crawler,
+                 consumers: List[Consumer], var finished: Boolean = false) {
+    val accumulator = new Accumulator
+  }
 
   lazy val directory = {
     val fc = new JFileChooser
@@ -53,6 +56,7 @@ class MainFrame extends JFrame with SwingHelper {
       Tab("Microsoft Academic Search", new MicrosoftCrawler, new Chart :: new CsvExporter(directory) :: Nil) ::
       Nil
 
+  private val totalAcc = new Accumulator
   private val total = new Chart
 
   laterOnUiThread {
@@ -62,7 +66,7 @@ class MainFrame extends JFrame with SwingHelper {
       (i => setIconImage(new ImageIcon(i).getImage))
 
     setTitle("agh-google-scholar-trends")
-    setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE)
+    setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE)
     setSize(new Dimension(800, 600))
     setMinimumSize(new Dimension(400, 300))
     setLocationRelativeTo(null)
@@ -123,8 +127,10 @@ class MainFrame extends JFrame with SwingHelper {
         finish()
       case Success(es) =>
         numProcessed += es.length
-        crawler.consumers foreach (_ consume es)
-        total consume es
+        crawler.accumulator consume es
+        crawler.consumers foreach (_ refresh (query.getText, crawler.accumulator))
+        totalAcc consume es
+        total refresh (query.getText, totalAcc)
       case Failure(e: HttpError) =>
         showError(e.getMessage + "\n\n" + e.response.getResponseBody)
         finish()
@@ -138,10 +144,12 @@ class MainFrame extends JFrame with SwingHelper {
     controls foreach (_ setEnabled false)
     numProcessed = 0
     val qt = query.getText
-    total reset qt
+    totalAcc reset()
+    total refresh (qt, totalAcc)
     (crawlers zip getQueries(theSame.isSelected, qt)) foreach { case (c, q) =>
       c.finished = false
-      c.consumers foreach (_ reset qt)
+      c.accumulator reset()
+      c.consumers foreach (_ refresh (qt, c.accumulator))
       (c.crawler crawl q)(onCrawled(_, c))
     }
   }
