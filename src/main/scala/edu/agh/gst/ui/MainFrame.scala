@@ -93,21 +93,27 @@ class MainFrame extends JFrame with SwingHelper {
   }
 
   private def onCrawled(years: Try[List[CrawlerEntry]], crawler: Tab) = laterOnUiThread {
+    def finish() {
+      crawler.finished = true
+      if (crawlers forall (_.finished)) {
+        showError("No more articles can be found!")
+        controls foreach (_ setEnabled true)
+      }
+    }
+
     years match {
       case Success(es) if es.isEmpty =>
-        crawler.finished = true
-        if (crawlers forall (_.finished)) {
-          showError("No more articles!")
-          controls foreach (_ setEnabled true)
-        }
+        finish()
       case Success(es) =>
         numProcessed += es.length
         crawler.chart addEntries es
         total addEntries es
       case Failure(e: HttpError) =>
         showError(e.getMessage + "\n\n" + e.response.getResponseBody)
+        finish()
       case Failure(e) =>
         showError(e.toString)
+        finish()
     }
   }
 
