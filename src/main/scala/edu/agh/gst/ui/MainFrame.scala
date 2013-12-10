@@ -28,6 +28,7 @@ import scala.util.Failure
 import scala.util.Success
 import edu.agh.gst.crawler.CrawlerEntry
 import edu.agh.gst.consumer.{Accumulator, CsvExporter, Consumer}
+import scala.reflect.io.Directory
 
 class MainFrame extends JFrame with SwingHelper {
 
@@ -47,13 +48,13 @@ class MainFrame extends JFrame with SwingHelper {
     fc setFileSelectionMode JFileChooser.DIRECTORIES_ONLY
     fc setDialogTitle "Choose CSV export directory..."
     if (0 == fc.showOpenDialog(this)) {
-      Option(fc.getSelectedFile)
+      Option(Directory(fc.getSelectedFile))
     } else None
   }
 
   private lazy val crawlers =
-    Tab("Google Scholar", new GoogleScholarCrawler(showCaptcha), new Chart :: new CsvExporter(directory) :: Nil) ::
-      Tab("Microsoft Academic Search", new MicrosoftCrawler, new Chart :: new CsvExporter(directory) :: Nil) ::
+    Tab("Google Scholar", new GoogleScholarCrawler(showCaptcha), new Chart :: new CsvExporter(directory, "google") :: Nil) ::
+      Tab("Microsoft Academic Search", new MicrosoftCrawler, new Chart :: new CsvExporter(directory, "microsoft") :: Nil) ::
       Nil
 
   private val totalAcc = new Accumulator

@@ -17,12 +17,33 @@
 
 package edu.agh.gst.consumer
 
-import java.io.File
+import scala.reflect.io.{File, Directory}
 
-class CsvExporter(directory: Option[File]) extends Consumer {
+object CsvExporter {
 
-  def refresh(title: String, source: Accumulator) {
+  val NonPathCharacter = """[^A-Za-z0-9_\-.]""".r
+  val Extension = ".csv"
 
+  def cleanUp(title: String) =
+    File(NonPathCharacter replaceAllIn (title, "_"))
+
+  def csvFrom(source: Accumulator): String = {
+    val d = source.data map {
+      case (year, YearData(articles, citations)) => s"$year,$articles,$citations"
+    } mkString "\n"
+
+    "Year,Articles,Citations\n" + d + "\n"
+  }
+
+}
+
+class CsvExporter(directory: Option[Directory], engine: String) extends Consumer {
+  import CsvExporter._
+
+  def refresh(title: String, source: Accumulator) = directory foreach { directory =>
+    val file = directory / cleanUp(title) addExtension (engine + Extension)
+
+    file writeAll csvFrom(source)
   }
 
 }
