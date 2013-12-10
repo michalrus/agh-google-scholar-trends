@@ -21,12 +21,13 @@ import javax.swing._
 import edu.agh.gst.SwingHelper
 import scala.util.Try
 import java.awt.{Image, BorderLayout, Dimension}
-import java.awt.event.{ActionEvent, ActionListener}
+import java.awt.event.{WindowEvent, ActionEvent, ActionListener}
 import edu.agh.gst.crawler._
 import edu.agh.gst.crawler.HttpError
 import scala.util.Failure
 import scala.util.Success
 import edu.agh.gst.crawler.CrawlerEntry
+import edu.agh.gst.consumer.{CsvExporter, Consumer}
 
 class MainFrame extends JFrame with SwingHelper {
 
@@ -36,11 +37,21 @@ class MainFrame extends JFrame with SwingHelper {
   private lazy val theSame = new JCheckBox("Same for all")
   private lazy val controls = go :: query :: theSame :: Nil
 
-  case class Tab(name: String, crawler: Crawler, chart: Chart, var finished: Boolean = false)
+  case class Tab(name: String, crawler: Crawler, consumers: List[Consumer], var finished: Boolean = false)
 
-  private val crawlers = Tab("Google Scholar", new GoogleScholarCrawler(showCaptcha), new Chart) ::
-    Tab("Microsoft Academic Search", new MicrosoftCrawler, new Chart) ::
-    Nil
+  lazy val directory = {
+    val fc = new JFileChooser
+    fc setFileSelectionMode JFileChooser.DIRECTORIES_ONLY
+    fc setDialogTitle "Choose CSV export directory..."
+    if (0 == fc.showOpenDialog(this)) {
+      Option(fc.getSelectedFile)
+    } else None
+  }
+
+  private lazy val crawlers =
+    Tab("Google Scholar", new GoogleScholarCrawler(showCaptcha), new Chart :: new CsvExporter(directory) :: Nil) ::
+      Tab("Microsoft Academic Search", new MicrosoftCrawler, new Chart :: new CsvExporter(directory) :: Nil) ::
+      Nil
 
   private val total = new Chart
 
@@ -51,10 +62,12 @@ class MainFrame extends JFrame with SwingHelper {
       (i => setIconImage(new ImageIcon(i).getImage))
 
     setTitle("agh-google-scholar-trends")
-    setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE)
+    setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE)
     setSize(new Dimension(800, 600))
     setMinimumSize(new Dimension(400, 300))
     setLocationRelativeTo(null)
+
+    directory
 
     buildUi()
 
@@ -73,7 +86,10 @@ class MainFrame extends JFrame with SwingHelper {
     tabs addTab("Total", total)
 
     crawlers foreach { c =>
-      tabs addTab(c.name, c.chart)
+      c.consumers foreach {
+        case ch: Chart => tabs addTab(c.name, ch)
+        case _ =>
+      }
     }
   }
 
@@ -107,8 +123,8 @@ class MainFrame extends JFrame with SwingHelper {
         finish()
       case Success(es) =>
         numProcessed += es.length
-        crawler.chart addEntries es
-        total addEntries es
+        crawler.consumers foreach (_ consume es)
+        total consume es
       case Failure(e: HttpError) =>
         showError(e.getMessage + "\n\n" + e.response.getResponseBody)
         finish()
@@ -122,14 +138,10 @@ class MainFrame extends JFrame with SwingHelper {
     controls foreach (_ setEnabled false)
     numProcessed = 0
     val qt = query.getText
-    def restart(ch: Chart) {
-      ch.clearEntries()
-      ch setTitle qt
-    }
-    restart(total)
+    total reset qt
     (crawlers zip getQueries(theSame.isSelected, qt)) foreach { case (c, q) =>
       c.finished = false
-      restart(c.chart)
+      c.consumers foreach (_ reset qt)
       (c.crawler crawl q)(onCrawled(_, c))
     }
   }

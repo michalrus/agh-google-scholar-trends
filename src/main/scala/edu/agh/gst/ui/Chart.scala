@@ -25,8 +25,9 @@ import java.awt.{BasicStroke, Color, BorderLayout}
 import org.jfree.chart.axis.{NumberTickUnit, NumberAxis}
 import edu.agh.gst.crawler.CrawlerEntry
 import org.jfree.chart.renderer.xy.StandardXYItemRenderer
+import edu.agh.gst.consumer.Consumer
 
-class Chart extends JPanel {
+class Chart extends JPanel with Consumer {
 
   private val articlesSeries = new XYSeries("Number of articles")
   private val citationsSeries = new XYSeries("Number of citations")
@@ -64,18 +65,17 @@ class Chart extends JPanel {
   import collection.mutable
   private val data = new mutable.HashMap[Int, YearData]
 
-  def setTitle(s: String) = chart setTitle s
+  def reset(title: String) {
+    chart setTitle title
+    data clear()
+    refresh()
+  }
 
-  def addEntries (entries: List[CrawlerEntry]) {
+  def consume(entries: List[CrawlerEntry]) {
     entries foreach { e =>
       val old = data getOrElse (e.year, YearData(0, 0))
       data += e.year -> (old + YearData(1, e.citations))
     }
-    refresh()
-  }
-
-  def clearEntries() {
-    data clear()
     refresh()
   }
 
