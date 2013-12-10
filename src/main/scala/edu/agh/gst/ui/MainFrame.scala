@@ -98,6 +98,7 @@ class MainFrame extends JFrame with SwingHelper {
       if (crawlers forall (_.finished)) {
         showError("No more articles can be found!")
         controls foreach (_ setEnabled true)
+        query requestFocus()
       }
     }
 
@@ -117,7 +118,30 @@ class MainFrame extends JFrame with SwingHelper {
     }
   }
 
+  private def startCrawling() {
+    controls foreach (_ setEnabled false)
+    numProcessed = 0
+    val qt = query.getText
+    def restart(ch: Chart) {
+      ch.clearEntries()
+      ch setTitle qt
+    }
+    restart(total)
+    (crawlers zip getQueries(theSame.isSelected, qt)) foreach { case (c, q) =>
+      c.finished = false
+      restart(c.chart)
+      (c.crawler crawl q)(onCrawled(_, c))
+    }
+  }
+
   private def buildToolbar() {
+    val al = new ActionListener {
+      def actionPerformed(e: ActionEvent) = startCrawling()
+    }
+
+    query addActionListener al
+    go addActionListener al
+
     val tb = new JToolBar
     tb setFloatable false
     add(tb, BorderLayout.PAGE_START)
@@ -131,23 +155,6 @@ class MainFrame extends JFrame with SwingHelper {
 
     tb addSeparator()
 
-    go addActionListener new ActionListener {
-      def actionPerformed(e: ActionEvent) = {
-        controls foreach (_ setEnabled false)
-        numProcessed = 0
-        val qt = query.getText
-        def restart(ch: Chart) {
-          ch.clearEntries()
-          ch setTitle qt
-        }
-        restart(total)
-        (crawlers zip getQueries(theSame.isSelected, qt)) foreach { case (c, q) =>
-          c.finished = false
-          restart(c.chart)
-          (c.crawler crawl q)(onCrawled(_, c))
-        }
-      }
-    }
     tb add go
 
     tb addSeparator()
