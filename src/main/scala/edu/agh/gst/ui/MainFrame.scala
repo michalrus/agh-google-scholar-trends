@@ -20,7 +20,7 @@ package edu.agh.gst.ui
 import javax.swing._
 import edu.agh.gst.SwingHelper
 import scala.util.Try
-import java.awt.{Image, BorderLayout, Dimension}
+import java.awt.{Component, Image, BorderLayout, Dimension}
 import java.awt.event.{ActionEvent, ActionListener}
 import edu.agh.gst.crawler._
 import edu.agh.gst.crawler.HttpError
@@ -29,6 +29,7 @@ import scala.util.Success
 import edu.agh.gst.crawler.CrawlerEntry
 import edu.agh.gst.consumer.{Accumulator, CsvExporter, Consumer}
 import scala.reflect.io.Directory
+import java.util.concurrent.atomic.{AtomicInteger, AtomicLong}
 
 class MainFrame extends JFrame with SwingHelper {
 
@@ -43,7 +44,7 @@ class MainFrame extends JFrame with SwingHelper {
     val accumulator = new Accumulator
   }
 
-  lazy val directory = {
+  private lazy val directory = {
     val fc = new JFileChooser
     fc setFileSelectionMode JFileChooser.DIRECTORIES_ONLY
     fc setDialogTitle "Choose CSV export directory..."
@@ -61,7 +62,7 @@ class MainFrame extends JFrame with SwingHelper {
   private val total = new Chart
 
   laterOnUiThread {
-    Try(UIManager setLookAndFeel UIManager.getSystemLookAndFeelClassName)
+    try { UIManager setLookAndFeel UIManager.getSystemLookAndFeelClassName } catch { case _: Throwable => }
 
     Option(getClass getResource "/icon.png") foreach
       (i => setIconImage(new ImageIcon(i).getImage))
@@ -70,10 +71,9 @@ class MainFrame extends JFrame with SwingHelper {
     setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE)
     setSize(new Dimension(800, 600))
     setMinimumSize(new Dimension(400, 300))
-    setLocationRelativeTo(null)
+    setLocationRelativeTo(ExplicitNull.Component)
 
-    directory
-
+    val _ = directory
     buildUi()
 
     setVisible(true)
@@ -106,7 +106,7 @@ class MainFrame extends JFrame with SwingHelper {
   private def showCaptcha(img: Image) = {
     val p = Promise[String]()
     val text = JOptionPane showInputDialog (this, new JLabel(new ImageIcon(img)), "Enter the captcha", JOptionPane.QUESTION_MESSAGE)
-    p complete (Option(text) match {
+    val _ = p tryComplete (Option(text) match {
       case Some(t) => Success(t)
       case _ => Failure(new Exception)
     })
@@ -160,6 +160,10 @@ class MainFrame extends JFrame with SwingHelper {
       def actionPerformed(e: ActionEvent) = startCrawling()
     }
 
+    implicit class JToolBarOps(t: JToolBar) {
+      def xadd(c: Component) { val _ = t add c } // an `add` that is actually a statement =,=
+    }
+
     query addActionListener al
     go addActionListener al
 
@@ -167,22 +171,22 @@ class MainFrame extends JFrame with SwingHelper {
     tb setFloatable false
     add(tb, BorderLayout.PAGE_START)
 
-    tb add new JLabel("Query: ")
+    tb xadd new JLabel("Query: ")
 
-    tb add query
+    tb xadd query
 
     theSame setSelected true
-    tb add theSame
+    tb xadd theSame
 
     tb addSeparator()
 
-    tb add go
+    tb xadd go
 
     tb addSeparator()
 
-    tb add new JLabel("Articles processed: ")
+    tb xadd new JLabel("Articles processed: ")
 
-    tb add results
+    tb xadd results
 
     ()
   }
@@ -191,7 +195,7 @@ class MainFrame extends JFrame with SwingHelper {
     if (same) crawlers map (_ => default)
     else crawlers map { cr =>
       val text = JOptionPane.showInputDialog(this, s"Enter a specialized query for ${cr.name}:",
-        cr.name, JOptionPane.QUESTION_MESSAGE, null, null, default).toString
+        cr.name, JOptionPane.QUESTION_MESSAGE, ExplicitNull.Icon, ExplicitNull.Objects, default).toString
       Option(text) match {
         case Some(t) => t
         case _ => default
@@ -199,10 +203,10 @@ class MainFrame extends JFrame with SwingHelper {
     }
   }
 
-  private var _numProcessed = 0
-  private def numProcessed = _numProcessed
-  private def numProcessed_=(v: Int) = {
-    _numProcessed = v
+  private val _numProcessed = new AtomicInteger(0)
+  private def numProcessed: Int = _numProcessed.get
+  private def numProcessed_=(v: Int) {
+    _numProcessed set v
     results setText v.toString
   }
 

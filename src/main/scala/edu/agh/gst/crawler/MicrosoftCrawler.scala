@@ -48,7 +48,7 @@ class MicrosoftCrawler extends Crawler {
   protected def handleResponse(f: (Try[List[CrawlerEntry]]) => Unit)(resp: Response)(andThen: => Future[Unit]) {
     if (resp.getStatusCode / 100 == 2) {
       val (entries, more_?) = parse(resp.getResponseBody)
-      if (more_?) andThen
+      if (more_?) { val _ = andThen }
       f(Success(entries))
     } else f(Failure(HttpError(resp)))
   }

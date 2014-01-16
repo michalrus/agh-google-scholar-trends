@@ -15,27 +15,12 @@
  *
  */
 
-package edu.agh.gst
+package edu.agh.gst.ui;
 
-import javax.swing.SwingUtilities
+public final class ExplicitNull {
 
-trait SwingHelper {
-
-  import scala.language.implicitConversions
-  implicit def blockToRunnable(f: => Unit) = new Runnable {
-    def run() = f
-  }
-
-  def laterOnUiThread(r: Runnable) = delayOnUiThread(0)(r)
-
-  def delayOnUiThread(ms: Long)(r: Runnable) {
-    import concurrent._
-    import ExecutionContext.Implicits.global
-
-    val _ = future { blocking {
-      Thread sleep ms
-      SwingUtilities invokeLater r
-    }}
-  }
+    static public final java.awt.Component Component = null;
+    static public final javax.swing.Icon Icon = null;
+    static public final Object[] Objects = null;
 
 }
