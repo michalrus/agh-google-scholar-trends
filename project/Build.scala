@@ -34,6 +34,10 @@ object Build extends Build {
       scalacOptions in Compile ++= Seq("-feature", "-deprecation", "-Yno-adapted-args", "-Ywarn-all", "-Xfatal-warnings",
         "-Xlint", "-Ywarn-value-discard", "-Ywarn-numeric-widen", "-Ywarn-dead-code", "-unchecked"),
 
+      resolvers += "michalrus.com repo" at "https://maven.michalrus.com/",
+      addCompilerPlugin("org.brianmckenna" % "wartremover" % "0.6-SNAPSHOT" cross CrossVersion.full),
+      scalacOptions += "-P:wartremover:traverser:org.brianmckenna.wartremover.warts.Unsafe",
+
       libraryDependencies += "net.databinder.dispatch" %% "dispatch-core" % "0.11.0",
       libraryDependencies += "org.jfree" % "jfreechart" % "1.0.15",
       libraryDependencies += "net.liftweb" %% "lift-util" % "2.5.1"
