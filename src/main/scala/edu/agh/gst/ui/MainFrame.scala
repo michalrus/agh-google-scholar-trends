@@ -118,7 +118,7 @@ class MainFrame extends JFrame with SwingHelper {
       (Tab(_, crawler, consumers), query) <- crawlers zip getQueries(theSame.isSelected, qt)
     } yield {
       val entries = crawler crawl query
-      val frames = Accumulator yearData entries
+      val frames = Accumulator accumulate entries
 
       consumers foreach (_ refresh (query, TreeMap.empty))
 
@@ -137,7 +137,7 @@ class MainFrame extends JFrame with SwingHelper {
     }
 
     val allEntries: Observable[CrawlerEntry] = allEntriesList.toObservable.flattenDelayError
-    val allFrames = Accumulator yearData allEntries
+    val allFrames = Accumulator accumulate allEntries
 
     {
       val counter = allEntries.zipWithIndex map (_._2)
@@ -147,10 +147,7 @@ class MainFrame extends JFrame with SwingHelper {
     totals refresh (qt, TreeMap.empty)
 
     val _ = allFrames.subscribe(
-      onNext = data => {
-        println(data)
-        totals refresh (qt, data)
-      },
+      onNext = data => totals refresh (qt, data),
       onError = _ => (),
       onCompleted = () => {
         showError("No more articles can be found!")

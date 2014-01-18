@@ -26,4 +26,11 @@ object Accumulator {
     }
   }
 
+  def accumulate(in: Observable[CrawlerEntry]): Observable[TreeMap[Int, YearData]] = {
+    yearData(in) map {
+      case tr if tr.isEmpty => tr
+      case tr => (tr.tail scanLeft tr.head)((acc, el) => (el._1, acc._2 + el._2))
+    }
+  }
+
 }
