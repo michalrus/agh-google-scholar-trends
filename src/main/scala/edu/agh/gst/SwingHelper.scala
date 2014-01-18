@@ -22,11 +22,11 @@ import javax.swing.SwingUtilities
 trait SwingHelper {
 
   import scala.language.implicitConversions
-  implicit def blockToRunnable(f: => Unit) = new Runnable {
-    def run() = f
+  implicit def quasiblockToRunnable(f: () => Unit) = new Runnable {
+    def run() = f()
   }
 
-  def laterOnUiThread(r: Runnable) = delayOnUiThread(0)(r)
+  def laterOnUiThread(r: Runnable) = SwingUtilities invokeLater r
 
   def delayOnUiThread(ms: Long)(r: Runnable) {
     import concurrent._

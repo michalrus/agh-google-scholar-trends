@@ -19,7 +19,6 @@ package edu.agh.gst.ui
 
 import javax.swing._
 import edu.agh.gst.SwingHelper
-import scala.util.Try
 import java.awt.{Component, Image, BorderLayout, Dimension}
 import java.awt.event.{ActionEvent, ActionListener}
 import edu.agh.gst.crawler._
@@ -29,7 +28,8 @@ import scala.util.Success
 import edu.agh.gst.crawler.CrawlerEntry
 import edu.agh.gst.consumer.{Accumulator, CsvExporter, Consumer}
 import scala.reflect.io.Directory
-import java.util.concurrent.atomic.{AtomicInteger, AtomicLong}
+import rx.lang.scala.Observable
+import scala.collection.immutable.TreeMap
 
 class MainFrame extends JFrame with SwingHelper {
 
@@ -40,9 +40,7 @@ class MainFrame extends JFrame with SwingHelper {
   private lazy val controls = go :: query :: theSame :: Nil
 
   case class Tab(name: String, crawler: Crawler,
-                 consumers: List[Consumer], var finished: Boolean = false) {
-    val accumulator = new Accumulator
-  }
+                 consumers: List[Consumer])
 
   private lazy val directory = {
     val fc = new JFileChooser
@@ -58,10 +56,9 @@ class MainFrame extends JFrame with SwingHelper {
       Tab("Microsoft Academic Search", new MicrosoftCrawler, new Chart :: new CsvExporter(directory, "microsoft") :: Nil) ::
       Nil
 
-  private val totalAcc = new Accumulator
-  private val total = new Chart
+  private val totals = new Chart
 
-  laterOnUiThread {
+  laterOnUiThread { () =>
     try { UIManager setLookAndFeel UIManager.getSystemLookAndFeelClassName } catch { case _: Throwable => }
 
     Option(getClass getResource "/icon.png") foreach
@@ -88,7 +85,7 @@ class MainFrame extends JFrame with SwingHelper {
     val tabs = new JTabbedPane
     add(tabs, BorderLayout.CENTER)
 
-    tabs addTab("Total", total)
+    tabs addTab("Total", totals)
 
     crawlers foreach { c =>
       c.consumers foreach {
@@ -113,46 +110,54 @@ class MainFrame extends JFrame with SwingHelper {
     p.future
   }
 
-  private def onCrawled(years: Try[List[CrawlerEntry]], crawler: Tab) = laterOnUiThread {
-    def finish() {
-      crawler.finished = true
-      if (crawlers forall (_.finished)) {
+  private def startCrawling() {
+    controls foreach (_ setEnabled false)
+    val qt = query.getText
+
+    val allEntriesList = for {
+      (Tab(_, crawler, consumers), query) <- crawlers zip getQueries(theSame.isSelected, qt)
+    } yield {
+      val entries = crawler crawl query
+      val frames = Accumulator yearData entries
+
+      consumers foreach (_ refresh (query, TreeMap.empty))
+
+      val _ = frames.subscribe(
+        onNext = data => consumers foreach (_ refresh (query, data)),
+        onError = {
+          case e: HttpError =>
+            showError(e.getMessage + "\n\n" + e.response.getResponseBody)
+          case e =>
+            showError(e.toString)
+        },
+        onCompleted = () => ()
+      )
+
+      entries
+    }
+
+    val allEntries: Observable[CrawlerEntry] = allEntriesList.toObservable.flattenDelayError
+    val allFrames = Accumulator yearData allEntries
+
+    {
+      val counter = allEntries.zipWithIndex map (_._2)
+      val _ = counter subscribe (n => results setText s"$n")
+    }
+
+    totals refresh (qt, TreeMap.empty)
+
+    val _ = allFrames.subscribe(
+      onNext = data => {
+        println(data)
+        totals refresh (qt, data)
+      },
+      onError = _ => (),
+      onCompleted = () => {
         showError("No more articles can be found!")
         controls foreach (_ setEnabled true)
         query requestFocus()
       }
-    }
-
-    years match {
-      case Success(es) if es.isEmpty =>
-        finish()
-      case Success(es) =>
-        numProcessed += es.length
-        crawler.accumulator consume es
-        crawler.consumers foreach (_ refresh (query.getText, crawler.accumulator))
-        totalAcc consume es
-        total refresh (query.getText, totalAcc)
-      case Failure(e: HttpError) =>
-        showError(e.getMessage + "\n\n" + e.response.getResponseBody)
-        finish()
-      case Failure(e) =>
-        showError(e.toString)
-        finish()
-    }
-  }
-
-  private def startCrawling() {
-    controls foreach (_ setEnabled false)
-    numProcessed = 0
-    val qt = query.getText
-    totalAcc reset()
-    total refresh (qt, totalAcc)
-    (crawlers zip getQueries(theSame.isSelected, qt)) foreach { case (c, q) =>
-      c.finished = false
-      c.accumulator reset()
-      c.consumers foreach (_ refresh (qt, c.accumulator))
-      (c.crawler crawl q)(onCrawled(_, c))
-    }
+    )
   }
 
   private def buildToolbar() {
@@ -201,13 +206,6 @@ class MainFrame extends JFrame with SwingHelper {
         case _ => default
       }
     }
-  }
-
-  private val _numProcessed = new AtomicInteger(0)
-  private def numProcessed: Int = _numProcessed.get
-  private def numProcessed_=(v: Int) {
-    _numProcessed set v
-    results setText v.toString
   }
 
 }

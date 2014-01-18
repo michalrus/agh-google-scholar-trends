@@ -17,9 +17,10 @@
 
 package edu.agh.gst.crawler
 
-import scala.util.{Failure, Success, Try}
 import com.ning.http.client.Response
-import dispatch._ //, Defaults._
+import dispatch._
+
+//, Defaults._
 
 object MicrosoftCrawler {
   val MicrosoftStep = 10
@@ -45,12 +46,14 @@ class MicrosoftCrawler extends Crawler {
     CookieHttp(svc).either
   }
 
-  protected def handleResponse(f: (Try[List[CrawlerEntry]]) => Unit)(resp: Response)(andThen: => Future[Unit]) {
+  protected def handleResponse(resp: Response): Future[ParsedResponse] = {
     if (resp.getStatusCode / 100 == 2) {
       val (entries, more_?) = parse(resp.getResponseBody)
-      if (more_?) { val _ = andThen }
-      f(Success(entries))
-    } else f(Failure(HttpError(resp)))
+      val andThen = if (more_?) AndThen.HasMore else AndThen.Finished
+      Future successful ParsedResponse(entries, andThen)
+    } else {
+      Future failed HttpError(resp)
+    }
   }
 
   private def parse(r: String): (List[CrawlerEntry], Boolean) = {

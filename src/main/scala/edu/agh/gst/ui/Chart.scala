@@ -18,16 +18,17 @@
 package edu.agh.gst.ui
 
 import javax.swing.JPanel
-import org.jfree.chart.{ChartPanel, ChartFactory, JFreeChart}
+import org.jfree.chart.{ChartPanel, ChartFactory}
 import org.jfree.data.xy.{XYSeriesCollection, XYSeries}
-import org.jfree.chart.plot.{XYPlot, PlotOrientation}
+import org.jfree.chart.plot.PlotOrientation
 import java.awt.{BasicStroke, Color, BorderLayout}
-import org.jfree.chart.axis.{NumberTickUnit, NumberAxis}
-import edu.agh.gst.crawler.CrawlerEntry
+import org.jfree.chart.axis.NumberAxis
 import org.jfree.chart.renderer.xy.StandardXYItemRenderer
-import edu.agh.gst.consumer.{Accumulator, Consumer}
+import edu.agh.gst.consumer.{YearData, Consumer}
+import scala.collection.immutable.TreeMap
+import edu.agh.gst.SwingHelper
 
-class Chart extends JPanel with Consumer {
+class Chart extends JPanel with Consumer with SwingHelper {
 
   private val articlesSeries = new XYSeries("Number of articles")
   private val citationsSeries = new XYSeries("Number of citations")
@@ -58,14 +59,14 @@ class Chart extends JPanel with Consumer {
   setLayout(new BorderLayout)
   add(new ChartPanel(chart), BorderLayout.CENTER)
 
-  def refresh(title: String, source: Accumulator) {
+  def refresh(title: String, data: TreeMap[Int, YearData]) = laterOnUiThread { () =>
     chart setTitle title
 
     articlesSeries clear()
     citationsSeries clear()
-    source.data foreach { case (y, d) =>
-      articlesSeries add(y.toDouble, d.articles.toDouble)
-      citationsSeries add(y.toDouble, d.citations.toDouble)
+    data foreach { case (yr, d) =>
+      articlesSeries add(yr.toDouble, d.articles.toDouble)
+      citationsSeries add(yr.toDouble, d.citations.toDouble)
     }
   }
 

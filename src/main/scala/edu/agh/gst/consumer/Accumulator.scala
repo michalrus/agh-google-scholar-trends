@@ -1,44 +1,28 @@
 package edu.agh.gst.consumer
 
 import edu.agh.gst.crawler.CrawlerEntry
+import rx.lang.scala.Observable
+import scala.collection.immutable.TreeMap
 
 case class YearData(articles: Int, citations: Int) {
   def +(that: YearData) = YearData(this.articles + that.articles, this.citations + that.citations)
 }
 
 trait Consumer {
-  def refresh(title: String, source: Accumulator)
+  def refresh(title: String, data: TreeMap[Int, YearData])
 }
 
-final class Accumulator {
+object Accumulator {
 
-  def data = accd
-
-  def consume(entries: List[CrawlerEntry]) = {
-    entries foreach { e =>
-      val old = raw getOrElse (e.year, YearData(0, 0))
-      raw += e.year -> (old + YearData(1, e.citations))
-    }
-    recalculate()
-  }
-
-  def reset() {
-    raw clear()
-    recalculate()
-  }
-
-  import collection.mutable
-  private val raw = new mutable.HashMap[Int, YearData]
-  private var accd: Vector[(Int, YearData)] = Vector.empty
-
-  private def recalculate() {
-    val vec = raw.toVector.sortWith {
-      case ((y1, _), (y2, _)) => y1 < y2
-    }
-
-    accd = if (vec.isEmpty) Vector.empty
-    else (vec.tail scanLeft vec.head) {
-      case ((_, acc), (y, num)) => (y, acc + num)
+  /**
+   * Transforms a `CrawlerEntry` with its history into...
+   * @param in Input from a `Crawler`.
+   * @return Observable of year -> `YearData`.
+   */
+  def yearData(in: Observable[CrawlerEntry]): Observable[TreeMap[Int, YearData]] = {
+    in.scan(TreeMap.empty[Int, YearData]) { case (previous, entry) =>
+      val prevYear = previous getOrElse (entry.year, YearData(0, 0))
+      previous + (entry.year -> (prevYear + YearData(1, entry.citations)))
     }
   }
 

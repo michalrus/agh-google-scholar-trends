@@ -17,16 +17,18 @@
 
 package edu.agh.gst.crawler
 
-import scala.util.{Failure, Try}
+import scala.util.{Failure, Success, Random, Try}
 import com.ning.http.client.Response
 import dispatch._, Defaults._
 import java.awt.Image
 import javax.imageio.ImageIO
 import scala.xml.Node
+import rx.lang.scala.{Subject, Observable}
 
 case class HttpError(response: Response)
   extends Exception(s"Failed with HTTP ${response.getStatusCode} ${response.getStatusText}.")
 
+object CrawlerEntry { val zero = CrawlerEntry(0, 0) }
 case class CrawlerEntry(year: Int, citations: Int)
 
 object Crawler {
@@ -35,7 +37,7 @@ object Crawler {
   private val MaxYear = java.util.Calendar.getInstance.get(java.util.Calendar.YEAR) + 1
   def isYear(i: Int) = i >= MinYear && i <= MaxYear
 
-  private val rng = new util.Random
+  private val rng = new Random
   private val MinSleep = 1000
   private val MaxSleep = 4000
   def sleepDuration = ((MinSleep min MaxSleep) + rng.nextInt(MaxSleep - MinSleep)).toLong
@@ -61,23 +63,40 @@ object Crawler {
 
 trait Crawler {
 
-  final def crawl(query: String)(f: Try[List[CrawlerEntry]] => Unit) {
-    def loop(start: Int) {
+  protected object AndThen extends Enumeration {
+    val Finished, HasMore, RerunLast = Value
+  }
+  protected case class ParsedResponse(entries: List[CrawlerEntry], andThen: AndThen.Value)
+
+  final def crawl(query: String): Observable[CrawlerEntry] = {
+    val subject = Subject[CrawlerEntry]()
+
+    def loop(start: Int, delayed: Boolean) { val _ = Future {
+      if (delayed) concurrent.blocking(Thread sleep Crawler.sleepDuration)
+
       val r = request(query, start)
 
       for (exc <- r.left)
-        f(Failure(exc))
+        subject onError exc
 
       for (resp <- r.right)
-        handleResponse(f)(resp)(Future {
-          concurrent.blocking(Thread sleep Crawler.sleepDuration)
-          loop(start + requestStep)
-        })
-    }
-    loop(0)
+        handleResponse(resp) onComplete {
+          case Failure(why) => subject onError why
+          case Success(ParsedResponse(entries, andThen)) =>
+            entries foreach subject.onNext
+            andThen match {
+              case AndThen.Finished => subject.onCompleted()
+              case AndThen.HasMore => loop(start + requestStep, delayed = true)
+              case AndThen.RerunLast => loop(start + 0, delayed = true)
+            }
+        }
+    }}
+    loop(0, delayed = false)
+
+    subject
   }
 
-  protected def handleResponse(f: Try[List[CrawlerEntry]] => Unit)(resp: Response)(andThen: => Future[Unit])
+  protected def handleResponse(resp: Response): Future[ParsedResponse]
 
   protected def request(q: String, start: Int): Future[Either[Throwable, Response]]
 

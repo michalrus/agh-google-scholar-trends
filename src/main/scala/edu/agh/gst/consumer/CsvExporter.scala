@@ -18,6 +18,7 @@
 package edu.agh.gst.consumer
 
 import scala.reflect.io.{File, Directory}
+import scala.collection.immutable.TreeMap
 
 object CsvExporter {
 
@@ -27,8 +28,8 @@ object CsvExporter {
   def cleanUp(title: String) =
     File(NonPathCharacter replaceAllIn (title, "_"))
 
-  def csvFrom(source: Accumulator): String = {
-    val d = source.data map {
+  def csvFrom(data: TreeMap[Int, YearData]): String = {
+    val d = data map {
       case (year, YearData(articles, citations)) => s"$year,$articles,$citations"
     } mkString "\n"
 
@@ -40,10 +41,10 @@ object CsvExporter {
 class CsvExporter(directory: Option[Directory], engine: String) extends Consumer {
   import CsvExporter._
 
-  def refresh(title: String, source: Accumulator) = directory foreach { directory =>
+  def refresh(title: String, data: TreeMap[Int, YearData]) = directory foreach { directory =>
     val file = directory / cleanUp(title) addExtension (engine + Extension)
 
-    file writeAll csvFrom(source)
+    file writeAll csvFrom(data)
   }
 
 }

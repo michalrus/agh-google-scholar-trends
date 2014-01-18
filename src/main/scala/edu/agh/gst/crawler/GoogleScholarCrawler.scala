@@ -17,7 +17,6 @@
 
 package edu.agh.gst.crawler
 
-import scala.util.{Success, Failure, Try}
 import java.awt.Image
 import scala.util.matching.Regex
 import com.ning.http.client.Response
@@ -55,14 +54,13 @@ class GoogleScholarCrawler(captcha: Image => Future[String]) extends Crawler {
     CookieHttp(svc).either
   }
 
-  protected def handleResponse(f: (Try[List[CrawlerEntry]]) => Unit)(resp: Response)(andThen: => Future[Unit]) {
+  protected def handleResponse(resp: Response): Future[ParsedResponse] = {
     if (resp.getStatusCode / 100 == 2) {
       val (entries, more_?) = parse(resp.getResponseBody)
-      if (more_?) { val _ = andThen }
-      f(Success(entries))
-    } else tryCaptcha(resp) onComplete {
-      case Success(true) => andThen
-      case _ => f(Failure(HttpError(resp)))
+      val andThen = if (more_?) AndThen.HasMore else AndThen.Finished
+      Future successful ParsedResponse(entries, andThen)
+    } else {
+      tryCaptcha(resp) map (_ => ParsedResponse(Nil, AndThen.RerunLast))
     }
   }
 
@@ -86,7 +84,12 @@ class GoogleScholarCrawler(captcha: Image => Future[String]) extends Crawler {
     (entries, entries.nonEmpty)
   }
 
-  private def tryCaptcha[F](resp: Response): Future[Boolean] = {
+  /**
+   * Tries to send a user-recognized CAPTCHA to Google.
+   * @param resp A response asking for the CAPTCHA
+   * @return A successful Future if Google accepted the CAPTCHA solution.
+   */
+  private def tryCaptcha(resp: Response): Future[Unit] = {
     def get(r: Regex, group: Int) =
       r findFirstMatchIn resp.getResponseBody map (_ group group) flatMap unescape
 
@@ -97,7 +100,7 @@ class GoogleScholarCrawler(captcha: Image => Future[String]) extends Crawler {
       continue <- get(CFContinueRegex, CFContinueRegexGroup)
       image <- get(CaptchaRegex, CaptchaRegexGroup) map (host + _)
     } yield {
-      def submit(answer: String): Future[Boolean] = {
+      def submit(answer: String): Future[Unit] = {
         val svc = url(host + "/sorry/Captcha") <<? Map(
           "continue" -> continue,
           "id" -> id,
@@ -106,7 +109,7 @@ class GoogleScholarCrawler(captcha: Image => Future[String]) extends Crawler {
           val succeeded_? = (resp.getStatusCode / 100 == 2) &&
             (resp.getResponseBody contains "Redirecting")
 
-          if (succeeded_?) Future(true)
+          if (succeeded_?) Future successful {()}
           else tryCaptcha(resp)
         }
       }

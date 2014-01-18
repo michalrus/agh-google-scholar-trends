@@ -38,9 +38,12 @@ object Build extends Build {
       addCompilerPlugin("org.brianmckenna" % "wartremover" % "0.6-SNAPSHOT" cross CrossVersion.full),
       scalacOptions += "-P:wartremover:traverser:org.brianmckenna.wartremover.warts.Unsafe",
 
-      libraryDependencies += "net.databinder.dispatch" %% "dispatch-core" % "0.11.0",
-      libraryDependencies += "org.jfree" % "jfreechart" % "1.0.15",
-      libraryDependencies += "net.liftweb" %% "lift-util" % "2.5.1"
+      libraryDependencies ++= Seq(
+        "net.databinder.dispatch" %% "dispatch-core" % "0.11.0",
+        "org.jfree" % "jfreechart" % "1.0.15",
+        "net.liftweb" %% "lift-util" % "2.5.1",
+        "com.netflix.rxjava" % "rxjava-scala" % "0.16.1"
+      )
 
   ): _*)
 
