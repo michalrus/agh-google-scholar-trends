@@ -136,11 +136,11 @@ class MainFrame extends JFrame with SwingHelper {
       entries
     }
 
-    val allEntries: Observable[CrawlerEntry] = allEntriesList.toObservable.flattenDelayError
+    val allEntries: Observable[List[CrawlerEntry]] = allEntriesList.toObservable.flattenDelayError
     val allFrames = Accumulator accumulate allEntries
 
     {
-      val counter = allEntries.zipWithIndex map (_._2)
+      val counter = (allEntries scan 0)(_ + _.length)
       val _ = counter subscribe (n => results setText s"$n")
     }
 

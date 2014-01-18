@@ -19,14 +19,16 @@ object Accumulator {
    * @param in Input from a `Crawler`.
    * @return Observable of year -> `YearData`.
    */
-  def yearData(in: Observable[CrawlerEntry]): Observable[TreeMap[Int, YearData]] = {
-    in.scan(TreeMap.empty[Int, YearData]) { case (previous, entry) =>
-      val prevYear = previous getOrElse (entry.year, YearData(0, 0))
-      previous + (entry.year -> (prevYear + YearData(1, entry.citations)))
+  def yearData(in: Observable[List[CrawlerEntry]]): Observable[TreeMap[Int, YearData]] = {
+    in.scan(TreeMap.empty[Int, YearData]) { (previous, entries) =>
+      (entries foldLeft previous) { (acc, entry) =>
+        val prevYear = acc getOrElse (entry.year, YearData(0, 0))
+        acc + (entry.year -> (prevYear + YearData(1, entry.citations)))
+      }
     }
   }
 
-  def accumulate(in: Observable[CrawlerEntry]): Observable[TreeMap[Int, YearData]] = {
+  def accumulate(in: Observable[List[CrawlerEntry]]): Observable[TreeMap[Int, YearData]] = {
     yearData(in) map {
       case tr if tr.isEmpty => tr
       case tr => (tr.tail scanLeft tr.head)((acc, el) => (el._1, acc._2 + el._2))

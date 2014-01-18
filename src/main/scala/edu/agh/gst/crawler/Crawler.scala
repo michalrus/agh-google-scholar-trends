@@ -68,8 +68,8 @@ trait Crawler {
   }
   protected case class ParsedResponse(entries: List[CrawlerEntry], andThen: AndThen.Value)
 
-  final def crawl(query: String): Observable[CrawlerEntry] = {
-    val subject = Subject[CrawlerEntry]()
+  final def crawl(query: String): Observable[List[CrawlerEntry]] = {
+    val subject = Subject[List[CrawlerEntry]]()
 
     def loop(start: Int, delayed: Boolean) { val _ = Future {
       if (delayed) concurrent.blocking(Thread sleep Crawler.sleepDuration)
@@ -83,7 +83,7 @@ trait Crawler {
         handleResponse(resp) onComplete {
           case Failure(why) => subject onError why
           case Success(ParsedResponse(entries, andThen)) =>
-            entries foreach subject.onNext
+            subject onNext entries
             andThen match {
               case AndThen.Finished => subject.onCompleted()
               case AndThen.HasMore => loop(start + requestStep, delayed = true)
