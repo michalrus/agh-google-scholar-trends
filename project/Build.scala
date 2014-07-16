@@ -18,33 +18,29 @@
 import sbt._
 import Keys._
 
-import sbtassembly.Plugin._
-import AssemblyKeys._
+import wartremover.WartRemover.autoImport._
 
 object Build extends Build {
 
   lazy val root = Project(id = "root", base = file(".")).settings(
-    assemblySettings ++ Seq(
 
-      name := "agh-google-scholar-trends",
-      version := "1.0",
-      scalaVersion := "2.10.3",
+    name := "agh-google-scholar-trends",
+    version := "1.0",
+    scalaVersion := "2.10.4",
 
-      javacOptions in Compile ++= Seq("-Xlint:deprecation"),
-      scalacOptions in Compile ++= Seq("-feature", "-deprecation", "-Yno-adapted-args", "-Ywarn-all", "-Xfatal-warnings",
-        "-Xlint", "-Ywarn-value-discard", "-Ywarn-numeric-widen", "-Ywarn-dead-code", "-unchecked"),
+    javacOptions in Compile ++= Seq("-Xlint:deprecation"),
+    scalacOptions in Compile ++= Seq("-feature", "-deprecation", "-Yno-adapted-args", "-Ywarn-all", "-Xfatal-warnings",
+      "-Xlint", "-Ywarn-value-discard", "-Ywarn-numeric-widen", "-Ywarn-dead-code", "-unchecked"),
 
-      resolvers += "michalrus.com repo" at "https://maven.michalrus.com/",
-      addCompilerPlugin("org.brianmckenna" % "wartremover" % "0.6-SNAPSHOT" cross CrossVersion.full),
-      scalacOptions += "-P:wartremover:traverser:org.brianmckenna.wartremover.warts.Unsafe",
+    wartremoverErrors ++= Warts.allBut(Wart.NoNeedForMonad, Wart.Nothing, Wart.AsInstanceOf, Wart.JavaConversions),
 
-      libraryDependencies ++= Seq(
-        "net.databinder.dispatch" %% "dispatch-core" % "0.11.0",
-        "org.jfree" % "jfreechart" % "1.0.15",
-        "net.liftweb" %% "lift-util" % "2.5.1",
-        "com.netflix.rxjava" % "rxjava-scala" % "0.16.1"
-      )
+    libraryDependencies ++= Seq(
+      "net.databinder.dispatch" %% "dispatch-core" % "0.11.0",
+      "org.jfree" % "jfreechart" % "1.0.15",
+      "net.liftweb" %% "lift-util" % "2.5.1",
+      "com.netflix.rxjava" % "rxjava-scala" % "0.16.1"
+    )
 
-  ): _*)
+  )
 
 }

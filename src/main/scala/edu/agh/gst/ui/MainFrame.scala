@@ -171,6 +171,7 @@ class MainFrame extends JFrame with SwingHelper {
 
     val tb = new JToolBar
     tb setFloatable false
+    tb setLayout new BoxLayout(tb, BoxLayout.X_AXIS) // linux fix for JTextBox in JToolBar
     add(tb, BorderLayout.PAGE_START)
 
     tb xadd new JLabel("Query: ")
